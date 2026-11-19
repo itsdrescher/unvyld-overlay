@@ -98,4 +98,18 @@ const CONFIG = {
     showSec: 9,                 // so lange läuft der Text durch
     label: "WORKOUT",           // Schild links am Banner
   },
+
+  // Socials & App als dezente Werbe-Karte (fitness-socials.html)
+  // icon: insta, tiktok, youtube, twitch, web oder app. Reihenfolge = Reihenfolge der Einblendung.
+  socials: {
+    everySec: 45,               // alle 45 Sekunden die nächste Karte
+    showSec: 8,                 // so lange ist eine Karte sichtbar (inkl. Ein-/Ausblenden)
+    items: [
+      { icon: "app",     label: "Meine App · kostenlos", handle: "UNVYLD", sub: "Training + Ernährung · ohne Werbung, ohne Abo" },
+      { icon: "insta",   label: "Instagram", handle: "@itsdrescher_" },
+      { icon: "tiktok",  label: "TikTok",    handle: "@itsdrescher_" },   // Handle prüfen
+      { icon: "youtube", label: "YouTube",   handle: "@itsdrescher" },
+      { icon: "insta",   label: "App-News",  handle: "@unvyld_now" },
+    ],
+  },
 };
