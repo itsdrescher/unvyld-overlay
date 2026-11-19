@@ -122,8 +122,8 @@ const CONFIG = {
     showCommands: false,        // !befehle im Chat anzeigen?
   },
 
-  // Live-Herzfrequenz (heartrate.html, Daten von Pulsoid)
-  // Den Pulsoid-Token NICHT hier eintragen (das Repo ist öffentlich), sondern in der OBS-Adresse: heartrate.html?token=…
+  // Live-Herzfrequenz (heartrate.html, Daten von HypeRate oder Pulsoid)
+  // Zugangsdaten NICHT hier eintragen (das Repo ist öffentlich), sondern in der OBS-Adresse: heartrate.html?id=…&key=…
   heartrate: {
     zones: [[0, "#d4ff1e"], [140, "#ff8a1f"], [165, "#e0262e"]],  // ab Puls → Farbe (Volt, Orange, Rot)
     graph: true,                // Verlaufslinie anzeigen

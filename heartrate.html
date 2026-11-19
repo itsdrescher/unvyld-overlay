@@ -7,7 +7,8 @@
 <script src="fitness-config.js"></script>
 <style>
   /* Live-Herzfrequenz (Pulsoid) im UNVYLD-Look. Empfohlene Quellgröße: 520 × 120.
-     Der Pulsoid-Token kommt NICHT ins Repo, sondern in die OBS-Adresse: heartrate.html?token=DEIN_TOKEN */
+     Zugangsdaten kommen NICHT ins Repo, sondern in die OBS-Adresse:
+     HypeRate (kostenlos): heartrate.html?id=DEINE_ID&key=DEIN_API_KEY   ·   Pulsoid: heartrate.html?token=DEIN_TOKEN */
   :root { --volt: #d4ff1e; --ink: #0c0d0f; --white: #f5f6f2; --muted: #9aa0a6; --zone: var(--volt);
     --display: "Barlow Condensed", "Arial Narrow", sans-serif; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,7 +42,9 @@
   const C = (typeof CONFIG !== "undefined") ? CONFIG : {};
   const H = Object.assign({ zones: [[0, "#d4ff1e"], [140, "#ff8a1f"], [165, "#e0262e"]], graph: true, graphSec: 120 }, C.heartrate || {});
   const params = new URLSearchParams(location.search);
-  const token = params.get("token") || H.token || "";
+  const token = params.get("token") || "";          // Pulsoid
+  const hrId = params.get("id") || "";              // HypeRate-ID (aus der App)
+  const hrKey = params.get("key") || "";            // HypeRate-API-Key
   const demo = params.has("demo");
   if (!window.obsstudio) document.body.classList.add("preview");
 
@@ -86,7 +89,22 @@
     setInterval(() => { t += 1; const v = Math.round(95 + 60 * Math.max(0, Math.sin(t / 12)) + Math.random() * 4); show(v); }, 1000);
     return;
   }
-  if (!token) { num.textContent = "?"; maxEl.textContent = "TOKEN FEHLT"; return; }
+  // HypeRate (kostenlos): Phoenix-WebSocket, Kanal hr:<ID>
+  if (hrId && hrKey) {
+    (function connectHR() {
+      const ws = new WebSocket(`wss://app.hyperate.io/socket/websocket?token=${encodeURIComponent(hrKey)}`);
+      let hb;
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ topic: `hr:${hrId}`, event: "phx_join", payload: {}, ref: 0 }));
+        hb = setInterval(() => ws.send(JSON.stringify({ topic: "phoenix", event: "heartbeat", payload: {}, ref: 0 })), 15000);
+      };
+      ws.onmessage = ev => { try { const d = JSON.parse(ev.data); if (d.event === "hr_update") show(Number(d.payload?.hr)); } catch {} };
+      ws.onclose = () => { clearInterval(hb); setTimeout(connectHR, 3000); };
+      ws.onerror = () => ws.close();
+    })();
+    return;
+  }
+  if (!token) { num.textContent = "?"; maxEl.textContent = "ID/KEY FEHLT"; return; }
 
   // Pulsoid Echtzeit-WebSocket
   function connect() {

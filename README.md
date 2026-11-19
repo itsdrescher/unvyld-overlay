@@ -10,7 +10,7 @@ Overlay für den Twitch-Stream von [itsdrescher_](https://twitch.tv/itsdrescher_
 | Cam-Rahmen mit Banner | `https://itsdrescher.github.io/unvyld-overlay/fitness-cam.html` | passend zur Cam |
 | Socials & App (Werbe-Karte) | `https://itsdrescher.github.io/unvyld-overlay/fitness-socials.html` | 520 × 110 |
 | Just-Chatting-Szene (Rahmen + Chat) | `https://itsdrescher.github.io/unvyld-overlay/justchatting.html` | 1920 × 1080 |
-| Herzfrequenz (Pulsoid) | `https://itsdrescher.github.io/unvyld-overlay/heartrate.html?token=DEIN_TOKEN` | 520 × 120 |
+| Herzfrequenz | `https://itsdrescher.github.io/unvyld-overlay/heartrate.html?id=HYPERATE_ID&key=API_KEY` | 520 × 120 |
 | Werbebanner einzeln (optional) | `https://itsdrescher.github.io/unvyld-overlay/fitness-banner.html` | z. B. 1200 × 80 |
 
 Nach Änderungen: in OBS bei der Quelle **„Cache der aktuellen Seite aktualisieren“**.
@@ -35,5 +35,5 @@ Thema unter der Cam in `fitness-config.js` → `justchatting.topic`.
 
 ## Herzfrequenz
 
-Daten kommen von [Pulsoid](https://pulsoid.net) (Apple Watch über die Pulsoid-App). Den Token **nur in der OBS-Adresse** eintragen, nie in eine Datei im Repo.
+Daten kommen von [HypeRate](https://www.hyperate.io) (kostenlos, Apple Watch über die HypeRate-App; API-Key über den kostenlosen „Research & Indie“-Plan) oder alternativ von Pulsoid (`?token=`). Zugangsdaten **nur in der OBS-Adresse** eintragen, nie in eine Datei im Repo.
 Vorschau ohne Uhr: `heartrate.html?demo`. Farbzonen in `fitness-config.js` → `heartrate`.
