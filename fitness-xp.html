@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitness XP</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800;1,900&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@streamerbot/client/dist/streamerbot-client.js"></script>
+<script src="fitness-config.js"></script>
+<style>
+  /* UNVYLD-Look: Dunkel, Daytona-Grau, Volt */
+  :root {
+    --volt: #d4ff1e;
+    --volt-dk: #9fc400;
+    --daytona: #4a4f55;
+    --daytona-hi: #6b7178;
+    --ink: #0c0d0f;
+    --panel: rgba(12, 13, 15, 0.88);
+    --line: rgba(107, 113, 120, 0.7);
+    --text: #f5f6f2;
+    --muted: #9aa0a6;
+    --xp-a: #9fc400;
+    --xp-b: #d4ff1e;
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: transparent; color: var(--text); font-family: Inter, system-ui, sans-serif; overflow: hidden; width: 100%; height: 100%; }
+  body.preview { background: #2b2f3a radial-gradient(circle at 30% 20%, #3b4252, #1b1e26); }
+
+  /* ---------- XP-Leiste ---------- */
+  #widget { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); width: 560px; filter: drop-shadow(0 6px 18px rgba(0,0,0,.6)); }
+  .head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .lvl {
+    font-family: var(--display); font-style: italic; font-weight: 900; font-size: 18px; color: var(--ink); letter-spacing: .5px;
+    background: var(--volt); padding: 1px 14px 1px 10px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  }
+  .title { font-family: var(--display); font-style: italic; font-weight: 900; font-size: 22px; letter-spacing: 1px; color: var(--text); text-shadow: 0 2px 4px #000; }
+  .title .brand { color: var(--muted); font-weight: 800; font-size: 14px; letter-spacing: 3px; margin-left: 6px; }
+  .done { margin-left: auto; font-size: 13px; color: var(--muted); font-weight: 700; text-shadow: 0 1px 3px #000; }
+  .done b { color: var(--volt); font-size: 15px; }
+
+  .bar {
+    position: relative; height: 30px; overflow: hidden;
+    background: linear-gradient(#141518, #1c1e22);
+    border: 2px solid var(--daytona-hi);
+    clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+    transition: border-color .6s;
+  }
+  .fill {
+    position: absolute; inset: 0 auto 0 0; width: 0%;
+    background: linear-gradient(90deg, var(--xp-a), var(--xp-b));
+    box-shadow: 0 0 16px color-mix(in srgb, var(--xp-b) 70%, transparent);
+    transition: width .45s cubic-bezier(.2,.8,.2,1), background .6s;
+  }
+  .fill::after { content: ""; position: absolute; inset: 0;
+    background: repeating-linear-gradient(115deg, rgba(255,255,255,.12) 0 10px, transparent 10px 20px); }
+  .fill::before {
+    content: ""; position: absolute; top: 0; bottom: 0; width: 60px; left: -60px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent);
+    animation: shine 3.5s ease-in-out infinite;
+  }
+  @keyframes shine { 0% { left: -60px; } 60%, 100% { left: 100%; } }
+  .ticks { position: absolute; inset: 0; display: flex; pointer-events: none; }
+  .ticks i { flex: 1; border-right: 2px solid rgba(0,0,0,.6); transform: skewX(-20deg); }
+  .ticks i:last-child { border-right: 0; }
+  .label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--display); font-style: italic; font-weight: 800; font-size: 17px; letter-spacing: .5px;
+    text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+  .bar.pulse { animation: pulse .7s ease; }
+  @keyframes pulse { 40% { border-color: var(--xp-b); filter: brightness(1.3); } }
+
+  /* ---------- Quest-Log (nur bei offenen Quests) ---------- */
+  .log { margin-top: 10px; background: var(--panel); border-left: 4px solid var(--volt); padding: 10px 12px;
+    transition: opacity .35s, transform .35s; }
+  .log.hidden { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+  .log h3 { font-family: var(--display); font-style: italic; font-weight: 900; font-size: 16px; letter-spacing: 2px; color: var(--volt); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .log h3 span { font-family: Inter, sans-serif; font-style: normal; font-weight: 700; color: var(--muted); letter-spacing: 0; font-size: 12px; }
+  #queue { list-style: none; display: flex; flex-direction: column; gap: 5px; }
+  #queue li { display: grid; grid-template-columns: 28px auto 1fr; align-items: center; gap: 8px;
+    padding: 6px 8px; background: rgba(255,255,255,.04); }
+  #queue li.new { animation: slideIn .35s ease; }
+  #queue li.now { background: linear-gradient(90deg, rgba(212,255,30,.18), rgba(212,255,30,.03)); outline: 1px solid rgba(212,255,30,.45); }
+  #queue .ic { font-size: 18px; text-align: center; }
+  #queue .reps { font-weight: 800; font-size: 15px; white-space: nowrap; }
+  #queue .src { font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #queue .tag { font-family: var(--display); font-style: italic; font-size: 12px; font-weight: 900; color: var(--ink); background: var(--volt); padding: 0 6px; margin-left: 6px; vertical-align: 1px; }
+  #queue li.more { display: block; text-align: center; color: var(--muted); font-size: 12px; background: none; }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+
+  /* ---------- Pop-ups ---------- */
+  #toast { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%) scale(.8); opacity: 0;
+    text-align: center; pointer-events: none; transition: opacity .3s, transform .3s; white-space: nowrap; }
+  #toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #toast .t1 { display: inline-block; font-family: var(--display); font-style: italic; font-weight: 900; font-size: 58px; letter-spacing: 2px; line-height: 1;
+    color: var(--ink); background: var(--volt); padding: 4px 30px 2px 24px;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%);
+    filter: drop-shadow(0 0 22px rgba(212,255,30,.55)); }
+  #toast .t2 { font-family: var(--display); font-style: italic; font-weight: 900; font-size: 36px; margin-top: 8px; letter-spacing: .5px; text-shadow: 0 2px 6px #000, 0 0 12px #000; }
+  #toast .t3 { font-size: 16px; color: var(--volt); margin-top: 2px; font-weight: 800; text-shadow: 0 2px 6px #000, 0 0 8px #000; }
+
+  /* ---------- Glücksrad ---------- */
+  #wheelBox { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(.6); opacity: 0;
+    transition: opacity .4s, transform .5s cubic-bezier(.2,1.4,.4,1); pointer-events: none; text-align: center; }
+  #wheelBox.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #wheelBox .wtitle { display: inline-block; font-family: var(--display); font-style: italic; font-weight: 900; font-size: 46px; letter-spacing: 3px; margin-bottom: 14px; line-height: 1;
+    color: var(--ink); background: var(--volt); padding: 4px 30px 2px 24px;
+    clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  .wheelWrap { position: relative; width: 440px; height: 440px; margin: 0 auto; filter: drop-shadow(0 10px 30px rgba(0,0,0,.7)); }
+  #wheel { width: 440px; height: 440px; }
+  .pointer { position: absolute; left: 50%; top: -14px; transform: translateX(-50%); width: 0; height: 0; z-index: 2;
+    border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 40px solid var(--volt);
+    filter: drop-shadow(0 3px 0 var(--ink)) drop-shadow(0 0 10px rgba(212,255,30,.8)); }
+  .pointer.tick { animation: tick .12s ease; }
+  @keyframes tick { 50% { transform: translateX(-50%) rotate(-14deg); } }
+  #wheelBox .wresult { height: 50px; margin-top: 12px; font-family: var(--display); font-style: italic; font-weight: 900; font-size: 40px; text-shadow: 0 2px 6px #000, 0 0 12px #000;
+    opacity: 0; transform: scale(.7); transition: opacity .3s, transform .35s cubic-bezier(.2,1.6,.4,1); }
+  #wheelBox .wresult.show { opacity: 1; transform: scale(1); }
+
+  .warnbox { display: none; position: fixed; left: 16px; bottom: 30px; max-width: 560px; padding: 10px 14px; border-radius: 8px;
+    background: rgba(120, 20, 20, .92); border: 1px solid #ff6b6b; color: #fff; font-size: 14px; font-weight: 700; }
+  .status { position: fixed; right: 10px; bottom: 8px; font-size: 11px; color: var(--muted); opacity: .8; }
+  .status.ok, .status.quiet { display: none; }
+</style>
+</head>
+<body>
+<div id="widget">
+  <div class="head">
+    <span class="lvl" id="lvl">LVL 1</span>
+    <span class="title">FITNESS XP<span class="brand">UNVYLD</span></span>
+    <span class="done">✔ <b id="done">0</b> Wdh. geschafft</span>
+  </div>
+  <div class="bar" id="bar">
+    <div class="fill" id="fill"></div>
+    <div class="ticks" id="ticks"></div>
+    <div class="label" id="label">0 / 50</div>
+  </div>
+  <div class="log hidden" id="log">
+    <h3>QUEST-LOG <span id="open"></span></h3>
+    <ul id="queue"></ul>
+  </div>
+</div>
+
+<div id="wheelBox">
+  <div class="wtitle">GLÜCKSRAD</div>
+  <div class="wheelWrap">
+    <div class="pointer" id="pointer"></div>
+    <canvas id="wheel" width="880" height="880"></canvas>
+  </div>
+  <div class="wresult" id="wresult"></div>
+</div>
+
+<div id="toast"><div class="t1" id="t1"></div><div class="t2" id="t2"></div><div class="t3" id="t3"></div></div>
+<div class="status" id="status">⏳ Verbinde mit Streamer.bot …</div>
+<div class="warnbox" id="warn"></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const isOBS = !!window.obsstudio;
+  const params = new URLSearchParams(location.search);
+  const debug = params.has("debug");
+  let demo = params.has("demo");
+  let connected = false;
+  let client = null;
+
+  /* ---------- Zustand (bleibt auch nach OBS-Neustart erhalten) ---------- */
+  const KEY = "fitness-xp-v1";
+  let state = { msgs: 0, level: 1, done: 0, queue: [], nextId: 1, spins: 0 };
+  function load() {
+    try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && Array.isArray(s.queue)) state = { ...state, ...s }; } catch (e) {}
+  }
+  function save() {
+    if (demo) return;
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  const ex = key => CONFIG.exercises[key] || { name: key, icon: "🏋️" };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  /* ---------- Chat-Tempo-Stufen ---------- */
+  const LEVELS = CONFIG.chat.levels;
+  function tier() { return Math.max(0, Math.min(LEVELS.length - 1, state.chatTier || 0)); }
+  function goal() { return LEVELS[tier()].goal; }
+
+  /* ---------- Darstellung ---------- */
+  for (let i = 0; i < 10; i++) $("ticks").appendChild(document.createElement("i"));
+
+  let lastSig = null;
+  const seen = new Set();
+  function render() {
+    const every = goal(), L = LEVELS[tier()];
+    $("lvl").textContent = "LVL " + state.level;
+    $("done").textContent = state.done;
+    $("fill").style.width = Math.min(100, state.msgs / every * 100) + "%";
+    $("label").textContent = `${state.msgs} / ${every} Chat-Nachrichten`;
+    document.documentElement.style.setProperty("--xp-a", L.color[0]);
+    document.documentElement.style.setProperty("--xp-b", L.color[1]);
+    $("bar").style.borderColor = tier() === 0 ? "" : L.color[0];
+
+    const q = state.queue;
+    $("log").classList.toggle("hidden", q.length === 0);
+    const total = q.reduce((n, t) => n + t.reps, 0);
+    $("open").textContent = q.length ? `${q.length} offen · ${total} Wdh.` : "";
+
+    const sig = q.map(t => t.id + ":" + t.reps + ":" + t.source).join(",");
+    if (sig === lastSig) return;
+    lastSig = sig;
+    const ul = $("queue");
+    ul.innerHTML = "";
+    q.slice(0, 5).forEach((t, i) => {
+      const e = ex(t.ex);
+      const li = document.createElement("li");
+      const cls = [];
+      if (i === 0) cls.push("now");
+      if (!seen.has(t.id)) { cls.push("new"); seen.add(t.id); }
+      li.className = cls.join(" ");
+      li.innerHTML = `<span class="ic">${e.icon}</span>
+        <span class="reps">${t.reps}× ${esc(e.name)}${i === 0 ? '<span class="tag">JETZT</span>' : ""}</span>
+        <span class="src">${esc(t.source)}</span>`;
+      ul.appendChild(li);
+    });
+    if (q.length > 5) ul.insertAdjacentHTML("beforeend", `<li class="more">+ ${q.length - 5} weitere Quests</li>`);
+  }
+
+  let toastQueue = [], toastBusy = false;
+  function toast(t1, t2, t3) {
+    toastQueue.push([t1, t2, t3]);
+    if (!toastBusy && !spinning) nextToast();
+  }
+  function nextToast() {
+    if (spinning) { toastBusy = false; return; }     // während das Rad dreht, warten
+    const item = toastQueue.shift();
+    if (!item) { toastBusy = false; return; }
+    toastBusy = true;
+    $("t1").textContent = item[0]; $("t2").textContent = item[1]; $("t3").textContent = item[2] || "";
+    $("toast").classList.add("show");
+    setTimeout(() => { $("toast").classList.remove("show"); setTimeout(nextToast, 400); }, 3200);
+  }
+
+  /* ---------- Sounds ---------- */
+  let audioCtx = null;
+  function ctx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    return audioCtx;
+  }
+  function bell(ac, freq, start, len, vol) {
+    [[1, "triangle", 1], [2, "sine", 0.35], [3, "sine", 0.12]].forEach(([mul, type, v]) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = freq * mul;
+      g.gain.setValueAtTime(0, start);
+      g.gain.linearRampToValueAtTime(vol * v, start + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + len);
+      o.connect(g).connect(ac.destination);
+      o.start(start); o.stop(start + len + 0.05);
+    });
+  }
+  const MELODIES = {
+    newQuest: [[523.25, 0, .5], [659.25, .09, .5], [783.99, .18, .5], [1046.5, .27, 1.1], [1318.5, .27, 1.1]],
+    levelUp:  [[392, 0, .35], [523.25, .12, .35], [659.25, .24, .35], [783.99, .36, .35], [1046.5, .5, 1.4], [1318.5, .5, 1.4], [1568, .5, 1.4]],
+    done:     [[783.99, 0, .45], [1046.5, .13, .9]],
+  };
+  function soundOK() { const S = CONFIG.sounds; return S && S.enabled && !demo; }
+  function playSound(name) {
+    if (!soundOK()) return;
+    const S = CONFIG.sounds, file = S[name + "File"];
+    if (file) { try { const a = new Audio(file); a.volume = S.volume; a.play().catch(() => {}); } catch (e) {} return; }
+    const ac = ctx(); if (!ac) return;
+    const t0 = ac.currentTime + 0.02;
+    MELODIES[name].forEach(([f, at, len]) => bell(ac, f, t0 + at, len, 0.25 * S.volume));
+  }
+  // kurzes Klacken, wenn der Zeiger über ein Feld springt
+  function clack() {
+    if (!soundOK()) return;
+    const ac = ctx(); if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = "square"; o.frequency.setValueAtTime(1800, t); o.frequency.exponentialRampToValueAtTime(600, t + 0.03);
+    g.gain.setValueAtTime(0.12 * CONFIG.sounds.volume, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.05);
+  }
+
+  /* ---------- Streamer.bot-Aktionen ---------- */
+  function runAction(name, args) {
+    if (!name || !client || !connected || demo) return;
+    try {
+      const r = client.doAction({ name }, args || {});
+      if (r && r.then) r.then(res => {
+        if (res && res.status && res.status !== "ok") warn(`⚠ Streamer.bot-Aktion „${name}“ fehlgeschlagen`);
+      }).catch(() => warn(`⚠ Streamer.bot-Aktion „${name}“ fehlgeschlagen`));
+    } catch (e) {}
+  }
+  async function checkActions() {
+    if (!client || !client.getActions) return;
+    try {
+      const res = await client.getActions();
+      const list = (res && res.actions) || [];
+      const need = [CONFIG.rules.action, CONFIG.clipAction, CONFIG.speakAction].filter(Boolean);
+      const problems = need.flatMap(n => {
+        const a = list.find(x => x.name === n);
+        if (!a) return [`„${n}“ fehlt`];
+        if (a.enabled === false) return [`„${n}“ ist deaktiviert`];
+        return [];
+      });
+      if (problems.length) warn("⚠ Streamer.bot-Aktion " + problems.join(", "), 60000);
+    } catch (e) {}
+  }
+  let warnTimer = null;
+  function warn(text, ms = 15000) {
+    console.warn("[Fitness XP]", text);
+    const w = $("warn"); w.textContent = text; w.style.display = "block";
+    clearTimeout(warnTimer); warnTimer = setTimeout(() => { w.style.display = "none"; }, ms);
+  }
+
+  function rulesText() {
+    const c = CONFIG, e = k => ex(k).name;
+    return `💪 Fitness-Challenge: ${LEVELS.map(l => l.goal).join("/")} Chat-Nachrichten je nach Chat-Tempo (aktuell ${goal()}) = Glücksrad 🎡 | `
+      + `Follow = ${c.follow.reps} ${e(c.follow.exercise)} | Sub = ${c.sub.reps} ${e(c.sub.exercise)} | `
+      + `Gift-Sub = ${c.gift.reps} ${e(c.gift.exercise)} pro Sub | ${c.bits.per} Bits = ${c.bits.reps} ${e(c.bits.exercise)} | `
+      + `Spende = ${c.donation.perEuro} ${ex(c.donation.exercise).one || e(c.donation.exercise)} pro € | `
+      + `Raid = ${e(c.raid.exercise)} pro Zuschauer. Ihr entscheidet, wie ich leide! 😅`;
+  }
+  let lastRules = 0, lastRulesCmd = 0, msgsSinceRules = 0;
+  function postRules() {
+    lastRules = Date.now(); msgsSinceRules = 0;
+    runAction(CONFIG.rules.action, { text: rulesText() });
+  }
+  function speak(text) { if (CONFIG.speakAction) runAction(CONFIG.speakAction, { text }); }
+
+  /* ---------- Quests ---------- */
+  function addTask(exKey, reps, source, mergeKey, noSound) {
+    if (!reps || reps <= 0) return;
+    const now = Date.now();
+    const last = state.queue[state.queue.length - 1];
+    if (mergeKey && last && last.mergeKey === mergeKey && now - last.t < 6000) {
+      last.reps += reps; last.t = now; last.source = source;
+      save(); render(); return;
+    }
+    state.queue.push({ id: state.nextId++, ex: exKey, reps, source, mergeKey, t: now });
+    save(); render();
+    const e = ex(exKey);
+    toast("NEUE QUEST!", `${e.icon} ${reps} ${e.name}`, source);
+    if (!noSound) playSound("newQuest");
+    speak(`Neue Quest: ${reps} ${e.name}. ${source}`);
+  }
+
+  function completeFirst() {
+    const t = state.queue.shift();
+    if (!t) return;
+    state.done += t.reps;
+    save(); render();
+    toast("QUEST ABGESCHLOSSEN", `✔ ${t.reps} ${ex(t.ex).name}`, "");
+    playSound("done");
+    runAction(CONFIG.clipAction, { text: `${t.reps} ${ex(t.ex).name} (${t.source})` });
+  }
+
+  /* ---------- Glücksrad ---------- */
+  const COLORS = ["#2a2d31", "#4a4f55", "#1d1f22", "#5d636a", "#34383d", "#43484e", "#25282c", "#575c63"];
+  let fields = [];       // die Felder auf dem Rad (bei wenigen Einträgen doppelt für schöneres Rad)
+  let wheelAngle = 0;    // aktuelle Drehung in Radiant
+  let spinning = false;
+
+  function buildFields() {
+    const base = CONFIG.chat.wheel.filter(w => CONFIG.exercises[w[0]]);
+    fields = base.length < 6 ? base.concat(base) : base.slice();
+  }
+
+  function drawWheel() {
+    const c = $("wheel"), g = c.getContext("2d");
+    const W = c.width, R = W / 2, n = fields.length, seg = Math.PI * 2 / n;
+    g.clearRect(0, 0, W, W);
+    g.save(); g.translate(R, R); g.rotate(wheelAngle);
+    for (let i = 0; i < n; i++) {
+      const a0 = -Math.PI / 2 + i * seg - seg / 2;
+      g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, R - 34, a0, a0 + seg); g.closePath();
+      const grad = g.createRadialGradient(0, 0, 40, 0, 0, R - 34);
+      const col = COLORS[CONFIG.chat.wheel.findIndex(w => w === fields[i] || (w[0] === fields[i][0] && w[1] === fields[i][1])) % COLORS.length];
+      grad.addColorStop(0, shade(col, -35)); grad.addColorStop(1, col);
+      g.fillStyle = grad; g.fill();
+      g.strokeStyle = "rgba(212,255,30,.9)"; g.lineWidth = 4; g.stroke();
+      // Beschriftung
+      g.save(); g.rotate(a0 + seg / 2);
+      g.textAlign = "right"; g.textBaseline = "middle";
+      const e = ex(fields[i][0]);
+      g.font = "900 44px Inter, sans-serif"; g.fillStyle = "#fff";
+      g.shadowColor = "rgba(0,0,0,.7)"; g.shadowBlur = 8;
+      g.fillText(`${fields[i][1]}× ${e.icon}`, R - 62, -18);
+      g.font = "800 28px Inter, sans-serif"; g.fillStyle = "#d4ff1e";
+      g.fillText(e.name, R - 62, 24);
+      g.restore();
+    }
+    g.restore();
+    // Goldrand mit Lämpchen
+    g.save(); g.translate(R, R);
+    g.beginPath(); g.arc(0, 0, R - 18, 0, Math.PI * 2);
+    g.lineWidth = 30; g.strokeStyle = "#0c0d0f"; g.stroke();
+    g.lineWidth = 22; const rg = g.createLinearGradient(0, -R, 0, R);
+    rg.addColorStop(0, "#6b7178"); rg.addColorStop(.5, "#4a4f55"); rg.addColorStop(1, "#2a2d31");
+    g.strokeStyle = rg; g.stroke();
+    const bulbs = 24, blink = Math.floor(performance.now() / 180) % 2;
+    for (let i = 0; i < bulbs; i++) {
+      const a = i / bulbs * Math.PI * 2;
+      g.beginPath(); g.arc(Math.cos(a) * (R - 18), Math.sin(a) * (R - 18), 6, 0, Math.PI * 2);
+      g.fillStyle = (i % 2 === blink) ? "#d4ff1e" : "#1d1f22";
+      g.shadowColor = "#d4ff1e"; g.shadowBlur = (i % 2 === blink) ? 14 : 0; g.fill();
+    }
+    g.shadowBlur = 0;
+    // Nabe
+    const hub = g.createRadialGradient(-10, -10, 5, 0, 0, 70);
+    hub.addColorStop(0, "#e6ff6a"); hub.addColorStop(.6, "#d4ff1e"); hub.addColorStop(1, "#9fc400");
+    g.beginPath(); g.arc(0, 0, 66, 0, Math.PI * 2); g.fillStyle = hub; g.fill();
+    g.lineWidth = 6; g.strokeStyle = "#0c0d0f"; g.stroke();
+    g.fillStyle = "#0c0d0f"; g.font = "italic 900 72px 'Barlow Condensed', sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("V", 0, 4);
+    g.restore();
+  }
+  function shade(hex, pct) {
+    const n = parseInt(hex.slice(1), 16), f = v => Math.max(0, Math.min(255, Math.round(v * (100 + pct) / 100)));
+    return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
+  }
+
+  function spinWheel(source) {
+    return new Promise(resolve => {
+      spinning = true;
+      buildFields();
+      const n = fields.length, seg = Math.PI * 2 / n;
+      const pick = Math.floor(Math.random() * n);
+      // Feld "pick" soll oben unter dem Zeiger landen (leicht zufällig innerhalb des Feldes)
+      const jitter = (Math.random() - 0.5) * seg * 0.6;
+      const startAngle = wheelAngle % (Math.PI * 2);
+      const target = -pick * seg + jitter;
+      const turns = 6 + Math.floor(Math.random() * 3);
+      let delta = (target - startAngle) % (Math.PI * 2);
+      if (delta < 0) delta += Math.PI * 2;
+      const total = delta + turns * Math.PI * 2;
+      const dur = 6000;
+      const box = $("wheelBox"), res = $("wresult");
+      res.classList.remove("show"); res.textContent = "";
+      box.classList.add("show");
+      playSound("levelUp");
+      let lastField = null, t0 = null;
+      const ease = t => 1 - Math.pow(1 - t, 4);
+      function frame(now) {
+        if (t0 === null) t0 = now + 700;          // kurz warten, dann losdrehen
+        const t = Math.max(0, Math.min(1, (now - t0) / dur));
+        wheelAngle = startAngle + total * ease(t);
+        drawWheel();
+        const under = Math.round(((-wheelAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) / seg) % n;
+        if (under !== lastField) {
+          if (lastField !== null && t > 0) { clack(); const p = $("pointer"); p.classList.remove("tick"); void p.offsetWidth; p.classList.add("tick"); }
+          lastField = under;
+        }
+        if (t < 1) { requestAnimationFrame(frame); return; }
+        const [exKey, reps] = fields[pick];
+        const e = ex(exKey);
+        res.textContent = `${e.icon} ${reps} ${e.name}!`;
+        res.classList.add("show");
+        setTimeout(() => {
+          box.classList.remove("show");
+          spinning = false;
+          addTask(exKey, reps, source || "Glücksrad");
+          setTimeout(resolve, 600);
+        }, 2600);
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  // Mehrere volle Balken nacheinander abarbeiten (auch nach einem Neuladen)
+  let spinLoop = false;
+  async function processSpins() {
+    if (spinLoop) return;
+    spinLoop = true;
+    while ((state.spins || 0) > 0) {
+      const src = (state.spinSources && state.spinSources.shift()) || "Glücksrad";
+      await spinWheel(src);
+      state.spins = Math.max(0, (state.spins || 0) - 1);
+      save();
+    }
+    spinLoop = false;
+  }
+  function queueSpin(source) {
+    state.spins = (state.spins || 0) + 1;
+    state.spinSources = state.spinSources || [];
+    state.spinSources.push(source);
+    save();
+    processSpins();
+  }
+  // Lämpchen auch im Stillstand blinken lassen, solange das Rad sichtbar ist
+  setInterval(() => { if ($("wheelBox").classList.contains("show") && !spinning) drawWheel(); }, 180);
+
+  /* ---------- Chat ---------- */
+  const lastMsg = {};
+  function onChat(d) {
+    const m = d.message && typeof d.message === "object" ? d.message : {};
+    const text = String((typeof d.message === "string" ? d.message : m.message) ?? d.text ?? "").trim();
+    const user = String(m.displayName || m.username || d.user?.name || d.user?.login || d.displayName || "").toLowerCase();
+    const role = Number(m.role ?? d.user?.role ?? 0);
+    const badges = (m.badges || d.user?.badges || []).map(b => String(b.name || b.setId || b).toLowerCase());
+    const isMod = role >= 3 || badges.includes("broadcaster") || badges.includes("moderator") || d.user?.moderator || d.user?.broadcaster;
+
+    if (text.startsWith("!")) { onCommand(text.toLowerCase(), isMod); return; }
+    if (CONFIG.ignoreUsers.includes(user)) return;
+    const now = Date.now();
+    if (user && lastMsg[user] && now - lastMsg[user] < CONFIG.chatCooldownSec * 1000) return;
+    if (user) lastMsg[user] = now;
+    addChatXP(1);
+  }
+
+  function addChatXP(n) {
+    msgsSinceRules += n;
+    state.msgs += n;
+    if (!state.levelStart) state.levelStart = Date.now();
+    while (state.msgs >= goal()) {
+      const every = goal();
+      state.msgs -= every;
+      state.level++;
+      $("bar").classList.remove("pulse"); void $("bar").offsetWidth; $("bar").classList.add("pulse");
+      queueSpin(`${every} Chat-Nachrichten`);
+
+      // Wie schnell war der Balken voll? → Ziel fürs nächste Level anpassen
+      const mins = (Date.now() - state.levelStart) / 60000;
+      const before = tier();
+      if (mins < CONFIG.chat.upIfFasterThanMin) state.chatTier = Math.min(LEVELS.length - 1, before + 1);
+      else if (mins >= CONFIG.chat.downIfSlowerThanMin) state.chatTier = Math.max(0, before - 1);
+      state.levelStart = Date.now();
+      if (tier() !== before) {
+        const L = LEVELS[tier()];
+        toast(`${L.label.toUpperCase()}!`, `Neues Ziel: ${L.goal} Nachrichten`, tier() > before ? "Ihr seid zu schnell 😅" : "Etwas ruhiger geworden");
+      }
+    }
+    save(); render();
+  }
+
+  function onCommand(cmd, isMod) {
+    if (CONFIG.rules.commands.includes(cmd)) {
+      if (Date.now() - lastRulesCmd >= CONFIG.rules.cooldownSec * 1000) { lastRulesCmd = Date.now(); postRules(); }
+      return;
+    }
+    if (!isMod) return;
+    if (CONFIG.cmdDone.includes(cmd)) completeFirst();
+    else if (cmd === CONFIG.cmdReset) {
+      state = { msgs: 0, level: 1, done: 0, queue: [], nextId: 1, chatTier: 0, levelStart: Date.now(), spins: 0, spinSources: [] };
+      wave = null; save(); render();
+    }
+    else if (cmd === CONFIG.cmdSpin) queueSpin("Test-Drehung");
+    else if (/^!fitness (follow|sub)(\s|$)/.test(cmd)) {
+      const isSub = cmd.startsWith("!fitness sub");
+      const who = cmd.split(/\s+/).slice(2).join(" ") || "Jemand";
+      if (isSub) addTask(CONFIG.sub.exercise, CONFIG.sub.reps, `Sub: ${who}`);
+      else addFollow(who);
+    }
+    else if (cmd === "!fitness followreset") {
+      followed = {}; try { localStorage.removeItem(FOLLOW_KEY); } catch (e) {}
+    }
+    else if (cmd === CONFIG.cmdTest) {
+      addTask(CONFIG.follow.exercise, CONFIG.follow.reps, "Test: Follow");
+      addTask(CONFIG.sub.exercise, CONFIG.sub.reps, "Test: Sub");
+    }
+  }
+
+  /* ---------- Events ---------- */
+  const nameOf = d => d.user?.display_name || d.user?.displayName || d.user?.name || d.user?.login
+    || d.displayName || d.display_name || d.userName || d.user_name || d.user_login || d.userLogin
+    || d.username || d.name || d.from || d.donorName || d.from_broadcaster_user_name || d.fromBroadcasterUserName
+    || (typeof d.user === "string" ? d.user : "") || "Jemand";
+  const idOf = d => d.user?.id || d.userId || d.user_id || d.id || "";
+
+  const FOLLOW_KEY = "fitness-xp-followed-v2";
+  let followed = {};
+  try { followed = JSON.parse(localStorage.getItem(FOLLOW_KEY)) || {}; } catch (e) {}
+
+  function onFollow(d) {
+    const name = nameOf(d);
+    const rawId = String(idOf(d) || "").toLowerCase();
+    const key = rawId || (name !== "Jemand" ? name.toLowerCase() : "");
+    if (!demo && key) {
+      if (followed[key]) return;
+      followed[key] = Date.now();
+      try { localStorage.setItem(FOLLOW_KEY, JSON.stringify(followed)); } catch (e) {}
+    }
+    addFollow(name);
+  }
+
+  let wave = null;
+  function addFollow(name) {
+    const F = CONFIG.follow, now = Date.now();
+    const quest = wave && now - wave.t < F.waveSec * 1000 && state.queue.find(t => t.id === wave.id);
+    if (quest) {
+      wave.count++; wave.t = now;
+      quest.reps = Math.min(F.waveMax, F.reps * wave.count);
+      quest.source = `Follow-Welle (${wave.count}) · ${name}`;
+      if (wave.count === 2) {
+        toast("🌊 FOLLOW-WELLE!", `bis zu ${F.waveMax} ${ex(F.exercise).name}`, "Jeder Follow zählt mit");
+        playSound("newQuest");
+      }
+      save(); render();
+      return;
+    }
+    addTask(F.exercise, F.reps, `Follow: ${name}`);
+    const last = state.queue[state.queue.length - 1];
+    wave = { id: last.id, count: 1, t: now };
+  }
+
+  function onSub(d) { addTask(CONFIG.sub.exercise, CONFIG.sub.reps, `Sub: ${nameOf(d)}`); }
+  function onGift(d) {
+    const who = d.isAnonymous || d.anonymous ? "Anonym" : nameOf(d);
+    addTask(CONFIG.gift.exercise, CONFIG.gift.reps, `Gift-Sub: ${who}`, "gift:" + who);
+  }
+  function onCheer(d) {
+    const bits = Number(d.bits ?? d.message?.bits ?? 0);
+    const reps = Math.floor(bits / CONFIG.bits.per) * CONFIG.bits.reps;
+    if (reps > 0) addTask(CONFIG.bits.exercise, reps, `${bits} Bits: ${nameOf(d)}`);
+  }
+  function onRaid(d) {
+    const viewers = Number(d.viewers ?? d.viewerCount ?? d.viewer_count ?? 0);
+    const r = CONFIG.raid;
+    const reps = Math.max(r.min, Math.min(r.max, viewers * r.perViewer));
+    addTask(r.exercise, reps, `Raid: ${nameOf(d)} (${viewers})`);
+  }
+  // Spenden: StreamElements, Streamlabs, Ko-fi, Tipeee (über Streamer.bot)
+  const seenDonations = new Set();
+  function onDonation(d) {
+    const id = d.id || d.donationId || d.messageId || d.transactionId;
+    if (id) { if (seenDonations.has(id)) return; seenDonations.add(id); }
+    let amount = d.amount ?? d.donationAmount ?? d.formattedAmount ?? d.amountRaw ?? 0;
+    amount = Number(String(amount).replace(",", ".").replace(/[^\d.]/g, "")) || 0;
+    const D = CONFIG.donation;
+    const reps = Math.min(D.max, Math.floor(amount * D.perEuro));
+    if (reps < 1) return;
+    const cur = d.currency || "€";
+    const shown = cur === "EUR" ? "€" : cur;
+    addTask(D.exercise, reps, `Spende ${amount.toFixed(2).replace(".", ",")} ${shown}: ${nameOf(d)}`);
+  }
+
+  // Kanalpunkte: Belohnung mit passendem Titel wird zur Quest
+  function onReward(d) {
+    const title = String(d.reward?.title ?? d.rewardTitle ?? d.title ?? "").trim().toLowerCase();
+    const r = (CONFIG.rewards || []).find(x => String(x.title).trim().toLowerCase() === title);
+    if (!r) return;
+    addTask(r.exercise, r.reps, `Kanalpunkte: ${nameOf(d)}`);
+  }
+
+  /* ---------- Verbindung zu Streamer.bot ---------- */
+  function setStatus(ok, text) {
+    // Im OBS-Stream bleibt der Hinweis unsichtbar (außer mit ?debug)
+    $("status").className = "status" + (ok ? " ok" : "") + (isOBS && !debug ? " quiet" : "");
+    $("status").textContent = text;
+  }
+
+  function connect() {
+    if (typeof StreamerbotClient === "undefined") { setStatus(false, "⚠ Streamer.bot-Client konnte nicht geladen werden"); return; }
+    const opts = {
+      host: CONFIG.streamerbot.host, port: CONFIG.streamerbot.port, endpoint: "/",
+      autoReconnect: true,
+      onConnect: () => { connected = true; setStatus(true, ""); setTimeout(checkActions, 500); },
+      onDisconnect: () => { connected = false; setStatus(false, "⚠ Keine Verbindung zu Streamer.bot"); },
+    };
+    if (CONFIG.streamerbot.password) opts.password = CONFIG.streamerbot.password;
+    client = new StreamerbotClient(opts);
+    const on = (ev, fn) => {
+      try {
+        client.on(ev, ({ data }) => {
+          if (demo) return;
+          connected = true; setStatus(true, "");
+          try { fn(data || {}); } catch (e) { console.error(ev, e); }
+        });
+      } catch (e) { console.warn("[Fitness XP] Event nicht verfügbar:", ev); }
+    };
+    on("Twitch.ChatMessage", onChat);
+    on("Twitch.Follow", onFollow);
+    on("Twitch.Sub", onSub);
+    on("Twitch.ReSub", onSub);
+    on("Twitch.GiftSub", onGift);
+    on("Twitch.Cheer", onCheer);
+    on("Twitch.Raid", onRaid);
+    on("Twitch.RewardRedemption", onReward);
+    on("StreamElements.Tip", onDonation);
+    on("Streamlabs.Donation", onDonation);
+    on("Kofi.Donation", onDonation);
+    on("TipeeeStream.Donation", onDonation);
+  }
+
+  /* ---------- Vorschau-Modus (Browser ohne Streamer.bot oder ?demo) ---------- */
+  function startDemo() {
+    demo = true;
+    document.body.classList.add("preview");
+    state = { msgs: 34, level: 3, done: 40, queue: [], nextId: 1, spins: 0 };
+    setStatus(false, "Vorschau-Modus – im OBS mit Streamer.bot laufen echte Daten");
+    render();
+    let i = 0;
+    setInterval(() => addChatXP(1), 700);
+    setInterval(() => {
+      const names = ["Lisa", "Tom", "Azeroth_Andi", "KniebeugenKalle", "Mia"];
+      const n = names[i++ % names.length];
+      [() => addTask("jack", 10, `Follow: ${n}`), () => onDonation({ amount: 5, from: n }), () => completeFirst()][i % 3]();
+    }, 9000);
+  }
+  window.__fitness = { queueSpin, addChatXP, render };
+
+  load();
+  buildFields();
+  drawWheel();
+  render();
+  connect();
+  if (CONFIG.rules.everyMin > 0) {
+    lastRules = Date.now();
+    setInterval(() => {
+      if (Date.now() - lastRules >= CONFIG.rules.everyMin * 60000 && msgsSinceRules >= CONFIG.rules.minMsgs) postRules();
+    }, 30000);
+  }
+  if ((state.spins || 0) > 0) setTimeout(processSpins, 1500);
+  if (demo) startDemo();
+  else if (!isOBS) setTimeout(() => { if (!connected) startDemo(); }, 2500);
+})();
+</script>
+</body>
+</html>

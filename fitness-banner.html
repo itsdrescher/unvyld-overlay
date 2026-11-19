@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Fitness Banner</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,900&family=Inter:wght@800;900&display=swap" rel="stylesheet">
+<script src="fitness-config.js"></script>
+<script src="fitness-banner.js"></script>
+<style>
+  html, body { margin: 0; width: 100%; height: 100%; background: transparent; overflow: hidden; }
+  body.preview { background: #2b2f3a; }
+  #stage { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div id="stage"></div>
+<script>
+  if (!window.obsstudio) document.body.classList.add("preview");
+  // ?test → alle 12 Sekunden eine Regel (zum Ausprobieren)
+  const test = new URLSearchParams(location.search).has("test");
+  window.__banner = startFitnessBanner(document.getElementById("stage"), test ? { everySec: 12 } : {});
+</script>
+</body>
+</html>

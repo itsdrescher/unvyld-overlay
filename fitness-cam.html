@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UNVYLD Cam</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800;1,900&family=Inter:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="fitness-config.js"></script>
+<script src="fitness-banner.js"></script>
+<style>
+  /* Der Rahmen passt sich immer komplett in die OBS-Quelle ein (--u wird per Skript gesetzt) */
+  :root { --volt: #d4ff1e; --daytona: #4a4f55; --daytona-hi: #6b7178; --ink: #0c0d0f; --white: #f5f6f2;
+    --ar: 0.75; --u: 1vw; --display: "Barlow Condensed", "Arial Narrow", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+  body.preview { background: #2b2f3a; }
+
+  .frame { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: calc(100 * var(--u)); padding: calc(2.2 * var(--u)) calc(2.2 * var(--u)) calc(8 * var(--u)); }
+  .cam { position: relative; width: 100%; aspect-ratio: 1 / var(--ar); overflow: visible;
+    outline: calc(.45 * var(--u)) solid var(--daytona); outline-offset: calc(.35 * var(--u));
+    box-shadow: 0 0 0 calc(.35 * var(--u)) var(--ink), 0 calc(1.5 * var(--u)) calc(4 * var(--u)) rgba(0,0,0,.6); }
+  body.preview .cam { background: linear-gradient(135deg, #3d4250, #22252e); }
+  body.preview .cam::after { content: "Kamera"; position: absolute; inset: 0; display: grid; place-items: center;
+    color: #666; font: 800 calc(4 * var(--u)) Inter, sans-serif; }
+
+  /* Volt-Ecken (wie Sucher-Markierungen) */
+  .corner { position: absolute; width: calc(9 * var(--u)); height: calc(9 * var(--u)); z-index: 2; pointer-events: none;
+    border: calc(.9 * var(--u)) solid var(--volt); filter: drop-shadow(0 0 calc(.8 * var(--u)) rgba(212,255,30,.45)); }
+  .tl { left: calc(-1.4 * var(--u)); top: calc(-1.4 * var(--u)); border-right: 0; border-bottom: 0; }
+  .tr { right: calc(-1.4 * var(--u)); top: calc(-1.4 * var(--u)); border-left: 0; border-bottom: 0; }
+  .bl { left: calc(-1.4 * var(--u)); bottom: calc(-1.4 * var(--u)); border-right: 0; border-top: 0; }
+  .br { right: calc(-1.4 * var(--u)); bottom: calc(-1.4 * var(--u)); border-left: 0; border-top: 0; }
+
+  /* Banner im Kamerabild: unten */
+  .camBanner { position: absolute; left: 0; right: 0; bottom: 8%; height: 12%; overflow: hidden; z-index: 1; }
+
+  /* Namensleiste unter der Cam: Volt-Schild + UNVYLD-Wortmarke */
+  .plate { position: absolute; left: calc(-1.4 * var(--u)); bottom: calc(-7.4 * var(--u)); z-index: 3;
+    display: flex; align-items: stretch; height: calc(5 * var(--u)); }
+  .name { display: flex; align-items: center; font-family: var(--display); font-style: italic; font-weight: 900;
+    font-size: calc(3.6 * var(--u)); letter-spacing: calc(.15 * var(--u)); color: var(--ink); background: var(--volt);
+    padding: 0 calc(3 * var(--u)) 0 calc(1.8 * var(--u)); clip-path: polygon(0 0, 100% 0, calc(100% - 1.4 * var(--u)) 100%, 0 100%); white-space: nowrap; }
+  .mark { display: flex; align-items: center; gap: calc(1 * var(--u)); background: var(--ink); margin-left: calc(-1 * var(--u));
+    padding: 0 calc(2.2 * var(--u)) 0 calc(2.6 * var(--u)); clip-path: polygon(calc(1.4 * var(--u)) 0, 100% 0, calc(100% - 1.4 * var(--u)) 100%, 0 100%); }
+  .word { position: relative; font-family: var(--display); font-style: italic; font-weight: 900; font-size: calc(3.4 * var(--u));
+    letter-spacing: calc(.25 * var(--u)); color: var(--white); line-height: 1; }
+  /* Volt-Schnitt durch die Buchstaben (das V bleibt weiß) */
+  .word .c { position: relative; display: inline-block; }
+  .word .c::after { content: attr(data-l); position: absolute; left: 0; top: 0; color: var(--volt);
+    clip-path: inset(46% 0 38% 0); }
+  .slogan { font-family: Inter, sans-serif; font-weight: 800; font-size: calc(1.5 * var(--u)); letter-spacing: calc(.2 * var(--u));
+    color: #9aa0a6; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <div class="cam" id="cam">
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+    <div class="plate">
+      <div class="name" id="name"></div>
+      <div class="mark" id="mark">
+        <span class="word" id="word"></span>
+        <span class="slogan" id="slogan">NEVER YIELD.</span>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+  const C = CONFIG;
+  const [w, h] = (C.cam && C.cam.aspect) || [4, 3];
+  document.documentElement.style.setProperty("--ar", h / w);
+
+  const name = (C.cam && C.cam.name) || "";
+  if (name) document.getElementById("name").textContent = name.toUpperCase(); else document.getElementById("name").remove();
+
+  // Wortmarke: Buchstaben einzeln, damit das V ohne Volt-Schnitt bleibt
+  const brand = (C.cam && C.cam.brand !== undefined) ? C.cam.brand : "UNVYLD";
+  if (brand) {
+    document.getElementById("word").innerHTML = [...brand].map(l =>
+      l === "V" ? `<span>${l}</span>` : `<span class="c" data-l="${l}">${l}</span>`).join("");
+    const sl = (C.cam && C.cam.slogan !== undefined) ? C.cam.slogan : "NEVER YIELD.";
+    if (sl) document.getElementById("slogan").textContent = sl; else document.getElementById("slogan").remove();
+  } else document.getElementById("mark").remove();
+
+  // Rahmen so groß wie möglich, aber komplett im Fenster
+  const frame = document.querySelector(".frame");
+  function fit() {
+    document.documentElement.style.setProperty("--u", "1px");
+    const r = frame.getBoundingClientRect();
+    const u = Math.min(window.innerWidth / 100, window.innerHeight / (100 * r.height / r.width)) * 0.97;
+    document.documentElement.style.setProperty("--u", u + "px");
+  }
+  fit();
+  window.addEventListener("resize", fit);
+
+  if (C.cam && C.cam.banner !== false && window.startFitnessBanner) {
+    const holder = document.createElement("div");
+    holder.className = "camBanner";
+    document.getElementById("cam").appendChild(holder);
+    const test = new URLSearchParams(location.search).has("test");
+    window.__banner = startFitnessBanner(holder, test ? { everySec: 12 } : {});
+  }
+  if (!window.obsstudio) document.body.classList.add("preview");
+})();
+</script>
+</body>
+</html>
