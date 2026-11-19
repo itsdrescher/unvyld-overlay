@@ -107,7 +107,7 @@ const CONFIG = {
     items: [
       { icon: "app",     label: "Meine App · kostenlos", handle: "UNVYLD", sub: "Training + Ernährung · ohne Werbung, ohne Abo" },
       { icon: "insta",   label: "Instagram", handle: "@itsdrescher_" },
-      { icon: "tiktok",  label: "TikTok",    handle: "@itsdrescher_" },   // Handle prüfen
+      { icon: "tiktok",  label: "TikTok",    handle: "@itsdrescher91" },
       { icon: "youtube", label: "YouTube",   handle: "@itsdrescher" },
       { icon: "insta",   label: "App-News",  handle: "@unvyld_now" },
     ],
