@@ -336,6 +336,24 @@
   }
   function speak(text) { if (CONFIG.speakAction) runAction(CONFIG.speakAction, { text }); }
 
+  // Natürliche Ansage je nach Auslöser (Namen ohne Unterstriche, damit die Stimme sie gut liest)
+  function speechFor(exKey, reps, source) {
+    const e = ex(exKey), what = `${reps} ${reps === 1 && e.one ? e.one : e.name}`;
+    const clean = n => String(n || "").replace(/_/g, " ").replace(/\s*\(\d+\)\s*$/, "").trim();
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const m = String(source || "").match(/^([^:]+):\s*(.*)$/);
+    const kind = m ? m[1] : "", who = m ? clean(m[2]) : "";
+    if (/^Follow/.test(kind)) return pick([`Danke für den Follow, ${who}! Das macht ${what}.`, `${who} folgt jetzt! ${what}, los geht's.`]);
+    if (/^Gift-Sub/.test(kind)) return `${who} verschenkt Subs! ${what}.`;
+    if (/^Sub/.test(kind)) return pick([`${who} hat abonniert! ${what}. Danke dir!`, `Neuer Sub von ${who}! Das kostet mich ${what}.`]);
+    if (/^Spende/.test(kind)) return `Danke ${who} für die Spende! ${what}.`;
+    if (/Bits/.test(kind)) return `${who} hat Bits geschickt. ${what}!`;
+    if (/^Raid/.test(kind)) return `Raid von ${who}! ${what} für die Raider.`;
+    if (/^Kanalpunkte/.test(kind)) return pick([`${who} hat Kanalpunkte eingelöst. ${what}!`, `${who} gönnt mir ${what}. Danke für nichts!`]);
+    if (/^Test/.test(kind)) return `Test-Quest: ${what}.`;
+    return pick([`Das Glücksrad hat entschieden: ${what}!`, `Neue Quest: ${what}.`]);
+  }
+
   /* ---------- Quests ---------- */
   function addTask(exKey, reps, source, mergeKey, noSound) {
     if (!reps || reps <= 0) return;
@@ -350,7 +368,7 @@
     const e = ex(exKey);
     toast("NEUE QUEST!", `${e.icon} ${reps} ${e.name}`, source);
     if (!noSound) playSound("newQuest");
-    speak(`Neue Quest: ${reps} ${e.name}. ${source}`);
+    speak(speechFor(exKey, reps, source));
   }
 
   function completeFirst() {
@@ -361,6 +379,7 @@
     toast("QUEST ABGESCHLOSSEN", `✔ ${t.reps} ${ex(t.ex).name}`, "");
     playSound("done");
     runAction(CONFIG.clipAction, { text: `${t.reps} ${ex(t.ex).name} (${t.source})` });
+    if (CONFIG.speakDone) speak(["Quest erledigt. Stark!", "Geschafft. Never yield!", "Erledigt. Weiter geht's."][Math.floor(Math.random() * 3)]);
   }
 
   /* ---------- Glücksrad ---------- */

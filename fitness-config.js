@@ -60,7 +60,8 @@ const CONFIG = {
   cmdSpin:  "!fitness rad",             // Glücksrad zum Testen drehen
 
   // Optional: Streamer.bot-Aktion für Ansagen (z. B. Speaker.bot), bekommt %text%. Leer = aus.
-  speakAction: "",
+  speakAction: "Fitness Ansage",   // Streamer.bot-Aktion mit Speaker.bot → Speak, Text: %text%
+  speakDone: true,                 // auch bei !done etwas sagen ("Quest erledigt. Stark!")
   // Clip, wenn eine Quest mit !done abgehakt wird (Aktion mit "Create Clip"). Leer = aus.
   clipAction: "Fitness Clip",
 
