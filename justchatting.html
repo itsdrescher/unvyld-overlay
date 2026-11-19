@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>UNVYLD Just Chatting</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800;1,900&family=Inter:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@streamerbot/client/dist/streamerbot-client.js"></script>
+<script src="fitness-config.js"></script>
+<style>
+  /* Just-Chatting-Szene, 1920 × 1080. Das Cam-Feld ist durchsichtig:
+     Kamera in OBS UNTER diese Quelle legen (Position und Größe stehen unten im Text). */
+  :root { --volt: #d4ff1e; --ink: #0c0d0f; --white: #f5f6f2; --muted: #9aa0a6; --daytona: #4a4f55; --daytona-hi: #6b7178;
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: Inter, sans-serif; color: var(--white); }
+
+  /* Hintergrund mit Loch für die Cam */
+  #bg { position: absolute; inset: 0;
+    background:
+      repeating-linear-gradient(115deg, rgba(255,255,255,.018) 0 2px, transparent 2px 22px),
+      radial-gradient(circle at 85% 110%, rgba(212,255,30,.10), transparent 45%),
+      linear-gradient(160deg, #15171a, #0c0d0f 60%);
+    /* Cam-Feld: x 48, y 48, 1360 × 765 */
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 48px, 48px 48px, 48px 813px, 1408px 813px, 1408px 48px, 0 48px); }
+  #wm { position: absolute; right: 30px; bottom: -60px; font: italic 900 520px var(--display); color: rgba(255,255,255,.025); line-height: 1; pointer-events: none; }
+
+  /* Cam-Rahmen */
+  #cam { position: absolute; left: 48px; top: 48px; width: 1360px; height: 765px;
+    outline: 4px solid var(--daytona); outline-offset: 3px; }
+  .corner { position: absolute; width: 90px; height: 90px; border: 8px solid var(--volt); filter: drop-shadow(0 0 8px rgba(212,255,30,.4)); }
+  .tl { left: -14px; top: -14px; border-right: 0; border-bottom: 0; }
+  .tr { right: -14px; top: -14px; border-left: 0; border-bottom: 0; }
+  .bl { left: -14px; bottom: -14px; border-right: 0; border-top: 0; }
+  .br { right: -14px; bottom: -14px; border-left: 0; border-top: 0; }
+  body.preview #cam { background: linear-gradient(135deg, #3d4250, #22252e); }
+  body.preview #cam::after { content: "Kamera  (x 48 · y 48 · 1360 × 765)"; position: absolute; inset: 0; display: grid; place-items: center; color: #777; font: 800 34px Inter; }
+
+  /* Namensleiste */
+  .plate { position: absolute; left: 34px; top: 840px; display: flex; height: 54px; }
+  .name { display: flex; align-items: center; font: italic 900 38px var(--display); letter-spacing: 1.5px; color: var(--ink); background: var(--volt);
+    padding: 0 34px 0 20px; clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%); }
+  .mark { display: flex; align-items: center; gap: 12px; background: #000; margin-left: -10px; padding: 0 26px 0 30px;
+    clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%); }
+  .word { font: italic 900 36px var(--display); letter-spacing: 3px; color: var(--white); }
+  .word .c { position: relative; display: inline-block; }
+  .word .c::after { content: attr(data-l); position: absolute; left: 0; top: 0; color: var(--volt); clip-path: inset(46% 0 38% 0); }
+  .slogan { font-weight: 800; font-size: 15px; letter-spacing: 2px; color: var(--muted); }
+
+  /* Thema */
+  .topic { position: absolute; left: 48px; top: 916px; width: 760px; }
+  .topic .k { font: italic 900 22px var(--display); letter-spacing: 3px; color: var(--volt); }
+  .topic .t { font: italic 900 46px var(--display); line-height: 1.05; color: var(--white); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* Chat */
+  #chat { position: absolute; left: 1440px; top: 48px; width: 432px; height: 765px; background: rgba(12,13,15,.75);
+    border-left: 6px solid var(--volt); display: flex; flex-direction: column; }
+  #chat h2 { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 16px 18px 10px; }
+  #chat h2 b { font: italic 900 30px var(--display); letter-spacing: 3px; color: var(--ink); background: var(--volt); padding: 0 18px 0 12px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+  #chat h2 span { font-size: 14px; font-weight: 800; color: var(--muted); }
+  #msgs { flex: 1; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 6px 18px 18px;
+    -webkit-mask: linear-gradient(transparent, #000 18%); mask: linear-gradient(transparent, #000 18%); }
+  .msg { font-size: 21px; font-weight: 500; line-height: 1.35; word-wrap: break-word; animation: in .35s ease; }
+  .msg .u { font-weight: 900; margin-right: 6px; }
+  .msg img { height: 1.4em; vertical-align: -0.35em; }
+  .msg.cmd { opacity: .55; font-size: 18px; }
+  @keyframes in { from { opacity: 0; transform: translateX(14px); } to { opacity: 1; transform: none; } }
+
+  /* Platz unten rechts: hier die Socials-Karte (fitness-socials.html) hinlegen */
+  body.preview #xpslot { display: grid !important; position: absolute; left: 840px; top: 840px; width: 560px; height: 76px; border: 2px dashed #555; display: grid; place-items: center; color: #666; font: 700 16px Inter; }
+  #xpslot, #slot { display: none; }
+  body.preview #slot { display: grid !important; position: absolute; left: 1440px; top: 850px; width: 432px; height: 92px; border: 2px dashed #555; display: grid; place-items: center; color: #666; font: 700 16px Inter; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="wm">V</div>
+<div id="cam"><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div></div>
+<div class="plate"><div class="name" id="name"></div><div class="mark"><span class="word" id="word"></span><span class="slogan" id="slogan"></span></div></div>
+<div class="topic"><div class="k">JUST CHATTING</div><div class="t" id="topic"></div></div>
+<div id="chat"><h2><b>CHAT</b><span id="hint"></span></h2><div id="msgs"></div></div>
+<div id="xpslot">Fitness XP (fitness-xp.html?x=840&amp;y=840)</div>
+<div id="slot">Socials-Karte (432 × 92)</div>
+<script>
+(() => {
+  const C = (typeof CONFIG !== "undefined") ? CONFIG : {};
+  const J = Object.assign({ topic: "Feierabend-Talk · Fragen & Antworten", maxMessages: 14, showCommands: false, hint: "!app · !regeln" }, C.justchatting || {});
+  const params = new URLSearchParams(location.search);
+  const demo = params.has("demo") || !window.obsstudio && params.has("preview");
+  if (!window.obsstudio) document.body.classList.add("preview");
+
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const cam = C.cam || {};
+  document.getElementById("name").textContent = String(cam.name || "itsdrescher_").toUpperCase();
+  const brand = cam.brand !== undefined ? cam.brand : "UNVYLD";
+  document.getElementById("word").innerHTML = [...brand].map(l => l === "V" ? `<span>${l}</span>` : `<span class="c" data-l="${esc(l)}">${esc(l)}</span>`).join("");
+  document.getElementById("slogan").textContent = cam.slogan !== undefined ? cam.slogan : "NEVER YIELD.";
+  document.getElementById("topic").textContent = J.topic;
+  document.getElementById("hint").textContent = J.hint;
+
+  const box = document.getElementById("msgs");
+  const ignore = (C.ignoreUsers || []).map(s => s.toLowerCase());
+  const palette = ["#d4ff1e", "#f5f6f2", "#9fd8ff", "#ffb86b", "#c9b6ff", "#7ef0c4"];
+  const colorFor = n => palette[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % palette.length];
+
+  function add(name, text, color, emotes) {
+    const isCmd = text.startsWith("!");
+    if (isCmd && !J.showCommands) return;
+    let html = esc(text);
+    (emotes || []).forEach(e => {
+      const n = e.name || e.code; const url = e.imageUrl || e.url;
+      if (!n || !url) return;
+      html = html.split(esc(n)).join(`<img src="${esc(url)}" alt="">`);
+    });
+    const el = document.createElement("div");
+    el.className = "msg" + (isCmd ? " cmd" : "");
+    el.innerHTML = `<span class="u" style="color:${esc(color || colorFor(name))}">${esc(name)}</span>${html}`;
+    box.appendChild(el);
+    while (box.children.length > J.maxMessages) box.firstChild.remove();
+  }
+
+  function onChat(d) {
+    const m = d.message && typeof d.message === "object" ? d.message : {};
+    const text = String((typeof d.message === "string" ? d.message : m.message) ?? d.text ?? "").trim();
+    const name = m.displayName || d.user?.display_name || d.user?.displayName || d.user?.name || m.username || "?";
+    if (!text || ignore.includes(String(name).toLowerCase())) return;
+    add(name, text, m.color || d.user?.color, m.emotes || d.emotes);
+  }
+
+  if (demo) {
+    const fake = [["Lisa", "Hallo Drescher! Wie war das Training heute?"], ["Tom", "Die App ist echt gut, nutze sie seit Montag"],
+      ["KniebeugenKalle", "Wann kommt das nächste Football-Video?"], ["Mia", "Never yield 💪"], ["Azeroth_Andi", "Grüße aus dem Raid!"]];
+    let i = 0; setInterval(() => { const f = fake[i++ % fake.length]; add(f[0], f[1]); }, 1600);
+    return;
+  }
+  if (typeof StreamerbotClient === "undefined") return;
+  const opts = { host: C.streamerbot?.host || "127.0.0.1", port: C.streamerbot?.port || 8080, endpoint: "/", autoReconnect: true };
+  if (C.streamerbot?.password) opts.password = C.streamerbot.password;
+  const client = new StreamerbotClient(opts);
+  client.on("Twitch.ChatMessage", ({ data }) => { try { onChat(data || {}); } catch (e) { console.error(e); } });
+})();
+</script>
+</body>
+</html>

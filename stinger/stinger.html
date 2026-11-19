@@ -1,0 +1,47 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  .bar { position: absolute; top: -200px; height: 1480px; transform-origin: center; }
+  #b1 { width: 900px; background: #4a4f55; }
+  #b2 { width: 700px; background: #d4ff1e; }
+  #b3 { width: 2900px; background: #0c0d0f; }
+  #logo { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; opacity: 0; }
+  #v { display: inline-grid; place-items: center; width: 230px; height: 230px; background: #d4ff1e;
+    clip-path: polygon(34px 0, 100% 0, calc(100% - 34px) 100%, 0 100%);
+    font: italic 900 210px "Inter Display", Inter, sans-serif; color: #0c0d0f; line-height: 1; }
+  #word { margin-top: 26px; font: italic 900 92px "Inter Display", Inter, sans-serif; letter-spacing: 14px; color: #f5f6f2; position: relative; }
+  #word .c { position: relative; display: inline-block; }
+  #word .c::after { content: attr(data-l); position: absolute; left: 0; top: 0; color: #d4ff1e; clip-path: inset(46% 0 38% 0); }
+  #slash { position: absolute; left: -10%; top: 50%; width: 120%; height: 10px; background: #d4ff1e; transform: rotate(-12deg) scaleX(0); transform-origin: left; opacity: .9; }
+</style></head>
+<body>
+<div class="bar" id="b1"></div><div class="bar" id="b2"></div><div class="bar" id="b3"></div>
+<div id="slash"></div>
+<div id="logo"><div id="v">V</div><div id="word"><span class="c" data-l="U">U</span><span class="c" data-l="N">N</span><span>V</span><span class="c" data-l="Y">Y</span><span class="c" data-l="L">L</span><span class="c" data-l="D">D</span></div></div>
+<script>
+  const ease = t => t < 0 ? 0 : t > 1 ? 1 : 1 - Math.pow(1 - t, 3);
+  const easeIn = t => t < 0 ? 0 : t > 1 ? 1 : t * t * t;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  // Schwarzer Hauptbalken fährt rein (bis 0,5 s) und links raus (ab 0,94 s); Daytona- und Volt-Streifen laufen an der Kante mit
+  window.render = t => {
+    const W = 2900, startX = 1920 + 420, midX = (1920 - W) / 2, endX = -W - 700;
+    let x, phaseIn = t < 0.94;
+    if (t < 0.5) x = lerp(startX, midX, ease(t / 0.5));
+    else if (t < 0.94) x = midX;
+    else x = lerp(midX, endX, easeIn((t - 0.94) / 0.36));
+    const set = (id, left, w) => { const el = document.getElementById(id); el.style.left = left + "px"; el.style.width = w + "px"; el.style.transform = "skewX(-18deg)"; };
+    set("b3", x, W);
+    if (phaseIn) { set("b2", x - 170, 130); set("b1", x - 400, 190); }
+    else { set("b2", x + W + 40, 130); set("b1", x + W + 210, 190); }
+    const lg = document.getElementById("logo");
+    const a = t < 0.50 ? 0 : t < 0.62 ? (t - 0.50) / 0.12 : t < 0.86 ? 1 : t < 0.96 ? 1 - (t - 0.86) / 0.10 : 0;
+    const s = t < 0.62 ? lerp(1.35, 1, ease((t - 0.50) / 0.12)) : lerp(1, 0.94, Math.min(1, (t - 0.62) / 0.34));
+    lg.style.opacity = a; lg.style.transform = `translate(-50%, -50%) scale(${s})`;
+    const sl = document.getElementById("slash");
+    const sa = t < 0.52 ? 0 : t < 0.66 ? ease((t - 0.52) / 0.14) : 1;
+    sl.style.transform = `rotate(-12deg) scaleX(${sa})`; sl.style.opacity = t < 0.86 ? 0.9 * Math.min(1, sa) : Math.max(0, 0.9 - (t - 0.86) * 9);
+  };
+  render(0);
+</script>
+</body></html>

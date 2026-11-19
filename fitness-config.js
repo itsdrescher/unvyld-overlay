@@ -112,4 +112,12 @@ const CONFIG = {
       { icon: "insta",   label: "App-News",  handle: "@unvyld_now" },
     ],
   },
+
+  // Just-Chatting-Szene (justchatting.html)
+  justchatting: {
+    topic: "Feierabend-Talk · Fragen & Antworten",  // großer Text unter der Cam – vor dem Stream anpassen
+    hint: "!app · !regeln",     // klein oben rechts im Chat
+    maxMessages: 14,            // so viele Nachrichten bleiben sichtbar
+    showCommands: false,        // !befehle im Chat anzeigen?
+  },
 };

@@ -160,6 +160,11 @@
   const isOBS = !!window.obsstudio;
   const params = new URLSearchParams(location.search);
   const debug = params.has("debug");
+  // Position der XP-Leiste per Adresse ändern, z. B. fitness-xp.html?x=48&y=930 (für die Just-Chatting-Szene)
+  if (params.has("x") || params.has("y")) {
+    const w = document.getElementById("widget");
+    w.style.left = (Number(params.get("x")) || 0) + "px"; w.style.top = (Number(params.get("y")) || 0) + "px"; w.style.transform = "none";
+  }
   let demo = params.has("demo");
   let connected = false;
   let client = null;
