@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>UNVYLD Herzfrequenz</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800;1,900&family=Inter:wght@700;800&display=swap" rel="stylesheet">
+<script src="fitness-config.js"></script>
+<style>
+  /* Live-Herzfrequenz (Pulsoid) im UNVYLD-Look. Empfohlene Quellgröße: 520 × 120.
+     Der Pulsoid-Token kommt NICHT ins Repo, sondern in die OBS-Adresse: heartrate.html?token=DEIN_TOKEN */
+  :root { --volt: #d4ff1e; --ink: #0c0d0f; --white: #f5f6f2; --muted: #9aa0a6; --zone: var(--volt);
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+  body.preview { background: #2b2f3a; }
+  #card { position: absolute; inset: 4% 2%; display: flex; align-items: center; gap: 5vh;
+    background: rgba(12,13,15,.9); border-left: 4vh solid var(--zone); padding: 0 12vh 0 8vh;
+    clip-path: polygon(0 0, 100% 0, calc(100% - 7vh) 100%, 0 100%); transition: border-color .6s, opacity .6s; }
+  #card.off { opacity: .55; }
+  .heart { flex: none; width: 46vh; height: 46vh; }
+  .heart path { fill: var(--zone); transition: fill .6s; }
+  .heart.beat { animation: beat var(--beat, 1s) ease-out infinite; }
+  @keyframes beat { 0%, 100% { transform: scale(1); } 12% { transform: scale(1.18); } 26% { transform: scale(.98); } 38% { transform: scale(1.08); } }
+  .num { font-family: var(--display); font-style: italic; font-weight: 900; font-size: 74vh; line-height: .9; color: var(--white);
+    font-variant-numeric: tabular-nums; min-width: 1.45em; }
+  .meta { display: flex; flex-direction: column; gap: 2vh; }
+  .unit { font-family: var(--display); font-style: italic; font-weight: 900; font-size: 24vh; color: var(--zone); letter-spacing: 1vh; transition: color .6s; }
+  .max { font-family: Inter, sans-serif; font-weight: 800; font-size: 13vh; color: var(--muted); white-space: nowrap; }
+  canvas { flex: 1; min-width: 0; height: 55%; }
+</style>
+</head>
+<body>
+<div id="card" class="off">
+  <svg class="heart" id="heart" viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 3 4.5 6.7 4.5c2.1 0 3.6 1.2 4.3 2.4h2c.7-1.2 2.2-2.4 4.3-2.4 3.7 0 5.8 3.9 4.3 7.3C19.5 16.4 12 21 12 21z"/></svg>
+  <div class="num" id="num">--</div>
+  <div class="meta"><div class="unit">BPM</div><div class="max" id="max">MAX --</div></div>
+  <canvas id="spark"></canvas>
+</div>
+<script>
+(() => {
+  const C = (typeof CONFIG !== "undefined") ? CONFIG : {};
+  const H = Object.assign({ zones: [[0, "#d4ff1e"], [140, "#ff8a1f"], [165, "#e0262e"]], graph: true, graphSec: 120 }, C.heartrate || {});
+  const params = new URLSearchParams(location.search);
+  const token = params.get("token") || H.token || "";
+  const demo = params.has("demo");
+  if (!window.obsstudio) document.body.classList.add("preview");
+
+  const card = document.getElementById("card"), num = document.getElementById("num"), heart = document.getElementById("heart");
+  const maxEl = document.getElementById("max"), cv = document.getElementById("spark");
+  if (!H.graph) cv.remove();
+  let max = 0, last = 0, history = [], staleTimer;
+
+  function zoneColor(bpm) { let c = H.zones[0][1]; for (const [from, col] of H.zones) if (bpm >= from) c = col; return c; }
+
+  function show(bpm) {
+    if (!bpm || bpm < 30 || bpm > 240) return;
+    last = bpm; max = Math.max(max, bpm);
+    num.textContent = bpm; maxEl.textContent = `MAX ${max}`;
+    const col = zoneColor(bpm);
+    document.documentElement.style.setProperty("--zone", col);
+    document.documentElement.style.setProperty("--beat", (60 / bpm).toFixed(3) + "s");
+    heart.classList.add("beat"); card.classList.remove("off");
+    history.push([Date.now(), bpm]);
+    clearTimeout(staleTimer);
+    staleTimer = setTimeout(() => { card.classList.add("off"); heart.classList.remove("beat"); num.textContent = "--"; }, 15000);
+  }
+
+  function drawGraph() {
+    if (!H.graph || !cv.isConnected) return;
+    const w = cv.clientWidth, h = cv.clientHeight; if (!w || !h) return;
+    cv.width = w * 2; cv.height = h * 2;
+    const g = cv.getContext("2d"); g.scale(2, 2);
+    const now = Date.now(), span = H.graphSec * 1000;
+    history = history.filter(p => now - p[0] < span);
+    if (history.length < 2) return;
+    const vals = history.map(p => p[1]), lo = Math.min(...vals) - 5, hi = Math.max(...vals) + 5;
+    g.beginPath();
+    history.forEach(([t, v], i) => { const x = w - (now - t) / span * w, y = h - (v - lo) / (hi - lo) * h; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue("--zone").trim() || "#d4ff1e";
+    g.lineWidth = Math.max(2, h * 0.06); g.lineJoin = "round"; g.stroke();
+  }
+  setInterval(drawGraph, 1000);
+
+  if (demo) {
+    let t = 0;
+    setInterval(() => { t += 1; const v = Math.round(95 + 60 * Math.max(0, Math.sin(t / 12)) + Math.random() * 4); show(v); }, 1000);
+    return;
+  }
+  if (!token) { num.textContent = "?"; maxEl.textContent = "TOKEN FEHLT"; return; }
+
+  // Pulsoid Echtzeit-WebSocket
+  function connect() {
+    const ws = new WebSocket(`wss://dev.pulsoid.net/api/v1/data/real_time?access_token=${encodeURIComponent(token)}`);
+    ws.onmessage = ev => {
+      try { const d = JSON.parse(ev.data); show(Number(d?.data?.heart_rate ?? d?.heart_rate)); }
+      catch { show(Number(ev.data)); }
+    };
+    ws.onclose = () => setTimeout(connect, 3000);
+    ws.onerror = () => ws.close();
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

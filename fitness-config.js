@@ -121,4 +121,12 @@ const CONFIG = {
     maxMessages: 14,            // so viele Nachrichten bleiben sichtbar
     showCommands: false,        // !befehle im Chat anzeigen?
   },
+
+  // Live-Herzfrequenz (heartrate.html, Daten von Pulsoid)
+  // Den Pulsoid-Token NICHT hier eintragen (das Repo ist öffentlich), sondern in der OBS-Adresse: heartrate.html?token=…
+  heartrate: {
+    zones: [[0, "#d4ff1e"], [140, "#ff8a1f"], [165, "#e0262e"]],  // ab Puls → Farbe (Volt, Orange, Rot)
+    graph: true,                // Verlaufslinie anzeigen
+    graphSec: 120,              // Zeitraum der Linie in Sekunden
+  },
 };

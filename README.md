@@ -10,6 +10,7 @@ Overlay für den Twitch-Stream von [itsdrescher_](https://twitch.tv/itsdrescher_
 | Cam-Rahmen mit Banner | `https://itsdrescher.github.io/unvyld-overlay/fitness-cam.html` | passend zur Cam |
 | Socials & App (Werbe-Karte) | `https://itsdrescher.github.io/unvyld-overlay/fitness-socials.html` | 520 × 110 |
 | Just-Chatting-Szene (Rahmen + Chat) | `https://itsdrescher.github.io/unvyld-overlay/justchatting.html` | 1920 × 1080 |
+| Herzfrequenz (Pulsoid) | `https://itsdrescher.github.io/unvyld-overlay/heartrate.html?token=DEIN_TOKEN` | 520 × 120 |
 | Werbebanner einzeln (optional) | `https://itsdrescher.github.io/unvyld-overlay/fitness-banner.html` | z. B. 1200 × 80 |
 
 Nach Änderungen: in OBS bei der Quelle **„Cache der aktuellen Seite aktualisieren“**.
@@ -31,3 +32,8 @@ Benötigt Streamer.bot mit aktiviertem WebSocket-Server (127.0.0.1:8080).
 Kamera in OBS **unter** `justchatting.html` legen: Position x 48 · y 48, Größe 1360 × 765.
 Fitness XP dort mit `fitness-xp.html?x=840&y=840`, Socials-Karte unten rechts (x 1440 · y 850, 432 × 92).
 Thema unter der Cam in `fitness-config.js` → `justchatting.topic`.
+
+## Herzfrequenz
+
+Daten kommen von [Pulsoid](https://pulsoid.net) (Apple Watch über die Pulsoid-App). Den Token **nur in der OBS-Adresse** eintragen, nie in eine Datei im Repo.
+Vorschau ohne Uhr: `heartrate.html?demo`. Farbzonen in `fitness-config.js` → `heartrate`.
