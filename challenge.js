@@ -43,11 +43,20 @@
     if (!text.startsWith("!")) return;
     const role = Number(m.role ?? d.user?.role ?? 0);
     const badges = (m.badges || d.user?.badges || []).map(b => String(b.name || b.setId || b).toLowerCase());
-    const isMod = role >= 3 || badges.includes("broadcaster") || badges.includes("moderator");
+    const user = String(m.username || m.displayName || d.user?.login || d.user?.name || "").toLowerCase();
+    const owner = String((C.cam && C.cam.name) || "").toLowerCase();
+    const isMod = role >= 3 || badges.includes("broadcaster") || badges.includes("moderator")
+      || d.user?.moderator || d.user?.broadcaster || m.isModerator || m.isBroadcaster || (owner && user === owner);
     if (!isMod) return;
     if ((C.cmdDone || ["!done"]).includes(text)) api.done();
     else if (text === (C.cmdReset || "!fitness reset")) api.reset();
   }
+
+  // Mehrere Quellen (Tafel, Challenge-Szene) gleichen sich über den gemeinsamen Speicher ab
+  window.addEventListener("storage", e => {
+    if (e.key !== KEY) return;
+    try { st = Object.assign({ counts: {}, reps: 0, current: null, done: false }, JSON.parse(e.newValue) || {}); emit("sync"); } catch (err) {}
+  });
 
   const params = new URLSearchParams(location.search);
   if (params.has("demo")) {
