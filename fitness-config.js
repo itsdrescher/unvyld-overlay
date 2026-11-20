@@ -129,4 +129,21 @@ const CONFIG = {
     graph: true,                // Verlaufslinie anzeigen
     graphSec: 120,              // Zeitraum der Linie in Sekunden
   },
+
+  // Stream-Deck-Challenges (z. B. GTA VI). Jeder Knopf = eine Streamer.bot-Aktion mit Execute C# Code:
+  //   CPH.WebsocketBroadcastJson("{\"fitness\":\"challenge\",\"id\":\"tod\"}"); return true;
+  // Zusätzliche Knöpfe: {"fitness":"done"} = Quest abhaken, {"fitness":"spin"} = Glücksrad.
+  challenges: {
+    group: "GTA",                 // Name der Gruppe (steht im Quest-Log, z. B. "GTA: Wasted")
+    title: "GTA VI · STRAFEN",    // Überschrift der Strafen-Tafel
+    doneAction: "GTA Spielszene", // Streamer.bot-Aktion, die nach der letzten erledigten Challenge zurückschaltet (leer = aus)
+    backDelaySec: 3,              // so viele Sekunden nach !done zurückschalten
+    list: [
+      { id: "tod",       label: "Wasted",           icon: "💀", exercise: "burpee", reps: 10 },
+      { id: "verhaftet", label: "Busted",           icon: "🚔", exercise: "pushup", reps: 15 },
+      { id: "stern",     label: "Fahndungsstern",   icon: "⭐", exercise: "pushup", reps: 5 },
+      { id: "crash",     label: "Auto geschrottet", icon: "💥", exercise: "squat",  reps: 10 },
+      { id: "mission",   label: "Mission verkackt", icon: "❌", exercise: "jack",   reps: 20 },
+    ],
+  },
 };

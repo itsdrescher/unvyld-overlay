@@ -11,6 +11,8 @@ Overlay für den Twitch-Stream von [itsdrescher_](https://twitch.tv/itsdrescher_
 | Socials & App (Werbe-Karte) | `https://itsdrescher.github.io/unvyld-overlay/fitness-socials.html` | 520 × 110 |
 | Just-Chatting-Szene (Rahmen + Chat) | `https://itsdrescher.github.io/unvyld-overlay/justchatting.html` | 1920 × 1080 |
 | Herzfrequenz | `https://itsdrescher.github.io/unvyld-overlay/heartrate.html?id=HYPERATE_ID&key=API_KEY` | 520 × 120 |
+| Strafen-Tafel (Spielszene) | `https://itsdrescher.github.io/unvyld-overlay/strafen-tafel.html` | 380 × 470 |
+| Challenge-Szene (Cam groß, Spiel klein) | `https://itsdrescher.github.io/unvyld-overlay/challenge-szene.html` | 1920 × 1080 |
 | Werbebanner einzeln (optional) | `https://itsdrescher.github.io/unvyld-overlay/fitness-banner.html` | z. B. 1200 × 80 |
 
 Nach Änderungen: in OBS bei der Quelle **„Cache der aktuellen Seite aktualisieren“**.
@@ -37,3 +39,13 @@ Thema unter der Cam in `fitness-config.js` → `justchatting.topic`.
 
 Daten kommen von [HypeRate](https://www.hyperate.io) (kostenlos, Apple Watch über die HypeRate-App; API-Key über den kostenlosen „Research & Indie“-Plan) oder alternativ von Pulsoid (`?token=`). Zugangsdaten **nur in der OBS-Adresse** eintragen, nie in eine Datei im Repo.
 Vorschau ohne Uhr: `heartrate.html?demo`. Farbzonen in `fitness-config.js` → `heartrate`.
+
+## Stream-Deck-Challenges (z. B. GTA VI)
+
+Challenges stehen in `fitness-config.js` → `challenges`. Pro Stream-Deck-Knopf eine Streamer.bot-Aktion:
+1. Execute C# Code: `CPH.WebsocketBroadcastJson("{\"fitness\":\"challenge\",\"id\":\"tod\"}");`
+2. Delay 300 ms
+3. OBS → Set Current Scene „GTA Challenge“
+
+Aktion „GTA Spielszene“ (OBS → Set Current Scene „GTA“) schaltet nach der letzten erledigten Challenge automatisch zurück.
+Challenge-Szene: Kamera x 40 · y 40 · 1240 × 698, Spiel x 1310 · y 40 · 570 × 321, Fitness XP mit `?x=1315&y=690`.

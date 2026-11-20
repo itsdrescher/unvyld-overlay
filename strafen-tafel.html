@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>UNVYLD Strafen-Tafel</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,800;1,900&family=Inter:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@streamerbot/client/dist/streamerbot-client.js"></script>
+<script src="fitness-config.js"></script>
+<script src="challenge.js"></script>
+<style>
+  /* Strafen-Tafel: zählt die Stream-Deck-Challenges des Abends.
+     Spalte (Standard, z. B. 380 × 470) oder Zeile: strafen-tafel.html?layout=row (z. B. 1200 × 150) */
+  :root { --volt: #d4ff1e; --ink: #0c0d0f; --white: #f5f6f2; --muted: #9aa0a6; --daytona: #4a4f55;
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; font-family: Inter, sans-serif; color: var(--white); }
+  body.preview { background: #2b2f3a; }
+  #board { position: absolute; inset: 0; background: rgba(12,13,15,.88); border-left: 6px solid var(--volt); padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+  h2 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  h2 span { white-space: nowrap; }
+  h2 b { font: italic 900 22px var(--display); white-space: nowrap; letter-spacing: 2px; color: var(--ink); background: var(--volt); padding: 0 16px 0 10px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+  h2 span { font-size: 13px; font-weight: 800; color: var(--muted); }
+  #rows { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 5px 10px; background: rgba(255,255,255,.04); }
+  .row .ic { font-size: 22px; text-align: center; }
+  .row .lb { font: italic 900 24px var(--display); line-height: 1; }
+  .row .lb small { display: block; font: 700 12px Inter; color: var(--muted); font-style: normal; margin-top: 2px; }
+  .row .ct { font: italic 900 30px var(--display); color: var(--white); min-width: 2ch; text-align: right; }
+  .row .ct i { font-size: 18px; color: var(--muted); font-style: normal; margin-right: 2px; }
+  .row.zero .ct { color: var(--daytona); }
+  .row.hit { animation: hit .9s ease; }
+  @keyframes hit { 0% { background: rgba(212,255,30,.55); transform: translateX(-6px); } 100% { background: rgba(255,255,255,.04); transform: none; } }
+  .total { display: flex; justify-content: space-between; align-items: baseline; border-top: 2px solid var(--daytona); padding-top: 8px; }
+  .total span { font: italic 900 20px var(--display); letter-spacing: 2px; color: var(--muted); }
+  .total b { font: italic 900 40px var(--display); color: var(--volt); }
+
+  /* Zeilen-Layout */
+  body.row #board { flex-direction: row; align-items: stretch; gap: 14px; padding: 12px 16px; }
+  body.row h2 { flex-direction: column; justify-content: center; gap: 6px; }
+  body.row #rows { flex-direction: row; }
+  body.row .row { flex: 1; grid-template-columns: 1fr; grid-template-rows: auto auto auto; justify-items: center; text-align: center; gap: 2px; padding: 6px 4px; }
+  body.row .row .ct { text-align: center; }
+  body.row .total { flex-direction: column; justify-content: center; border-top: 0; border-left: 2px solid var(--daytona); padding: 0 0 0 14px; }
+</style>
+</head>
+<body>
+<div id="board">
+  <h2><b id="title"></b><span id="sub">Stream Deck</span></h2>
+  <div id="rows"></div>
+  <div class="total"><span>HEUTE</span><b id="total">0</b></div>
+</div>
+<script>
+(() => {
+  const params = new URLSearchParams(location.search);
+  if (params.get("layout") === "row") document.body.classList.add("row");
+  if (!window.obsstudio) document.body.classList.add("preview");
+  const CH = Challenges.config;
+  document.getElementById("title").textContent = CH.title;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const rows = document.getElementById("rows");
+  rows.innerHTML = CH.list.map(c => `<div class="row" id="r-${esc(c.id)}"><div class="ic">${esc(c.icon || "•")}</div>
+    <div class="lb">${esc(c.label)}<small>${c.reps} ${esc(Challenges.exName(c.exercise, c.reps))}</small></div>
+    <div class="ct"><i>×</i><span>0</span></div></div>`).join("");
+  Challenges.onChange((st, why) => {
+    CH.list.forEach(c => {
+      const el = document.getElementById("r-" + c.id); const n = st.counts[c.id] || 0;
+      el.querySelector(".ct span").textContent = n; el.classList.toggle("zero", !n);
+      if (why === "challenge" && st.current && st.current.id === c.id) { el.classList.remove("hit"); void el.offsetWidth; el.classList.add("hit"); }
+    });
+    document.getElementById("total").textContent = `${st.reps} WDH.`;
+  });
+})();
+</script>
+</body>
+</html>

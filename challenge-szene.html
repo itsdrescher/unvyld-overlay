@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>UNVYLD Challenge-Szene</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@1,700;1,800;1,900&family=Inter:wght@700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@streamerbot/client/dist/streamerbot-client.js"></script>
+<script src="fitness-config.js"></script>
+<script src="challenge.js"></script>
+<style>
+  /* Challenge-Szene 1920 × 1080: Cam groß links, Spiel klein rechts oben, aktuelle Challenge darunter.
+     Beide Felder sind durchsichtig – Kamera und Spielaufnahme in OBS UNTER diese Quelle legen:
+     Kamera  x 40 · y 40 · 1240 × 698      Spiel  x 1310 · y 40 · 570 × 321 */
+  :root { --volt: #d4ff1e; --ink: #0c0d0f; --white: #f5f6f2; --muted: #9aa0a6; --daytona: #4a4f55;
+    --display: "Barlow Condensed", "Arial Narrow", sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: Inter, sans-serif; color: var(--white); }
+  #bg { position: absolute; inset: 0;
+    background: repeating-linear-gradient(115deg, rgba(255,255,255,.018) 0 2px, transparent 2px 22px),
+      radial-gradient(circle at 80% 105%, rgba(212,255,30,.10), transparent 45%), linear-gradient(160deg, #15171a, #0c0d0f 60%);
+    -webkit-mask: linear-gradient(#000 0 0) 40px 40px / 1240px 698px no-repeat, linear-gradient(#000 0 0) 1310px 40px / 570px 321px no-repeat, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; }
+  .frame { position: absolute; outline: 4px solid var(--daytona); outline-offset: 3px; }
+  #cam { left: 40px; top: 40px; width: 1240px; height: 698px; }
+  #game { left: 1310px; top: 40px; width: 570px; height: 321px; }
+  .corner { position: absolute; width: 80px; height: 80px; border: 8px solid var(--volt); filter: drop-shadow(0 0 8px rgba(212,255,30,.4)); }
+  #game .corner { width: 44px; height: 44px; border-width: 5px; }
+  .tl { left: -14px; top: -14px; border-right: 0; border-bottom: 0; } .tr { right: -14px; top: -14px; border-left: 0; border-bottom: 0; }
+  .bl { left: -14px; bottom: -14px; border-right: 0; border-top: 0; } .br { right: -14px; bottom: -14px; border-left: 0; border-top: 0; }
+  #game .tl, #game .tr { top: -10px; } #game .bl, #game .br { bottom: -10px; } #game .tl, #game .bl { left: -10px; } #game .tr, #game .br { right: -10px; }
+  .glabel { position: absolute; left: 0; bottom: -34px; font: italic 900 20px var(--display); letter-spacing: 3px; color: var(--muted); }
+  body.preview #cam { background: linear-gradient(135deg, #3d4250, #22252e); }
+  body.preview #game { background: linear-gradient(135deg, #2c3a2c, #1a221a); }
+  body.preview .frame::after { position: absolute; inset: 0; display: grid; place-items: center; color: #777; font: 800 26px Inter; }
+  body.preview #cam::after { content: "Kamera (x 40 · y 40 · 1240 × 698)"; }
+  body.preview #game::after { content: "Spiel (x 1310 · y 40 · 570 × 321)"; font-size: 18px; }
+
+  /* Challenge-Karte */
+  #card { position: absolute; left: 1310px; top: 400px; width: 570px; height: 260px; background: rgba(12,13,15,.9); border-left: 8px solid var(--volt);
+    padding: 16px 22px; display: flex; flex-direction: column; justify-content: space-between; }
+  #card .k { display: flex; justify-content: space-between; align-items: center; }
+  #card .k b { font: italic 900 28px var(--display); letter-spacing: 3px; color: var(--ink); background: var(--volt); padding: 0 18px 0 12px;
+    clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%); }
+  #card .k span { font-weight: 800; font-size: 15px; color: var(--muted); }
+  #card .why { font: italic 900 40px var(--display); line-height: 1; display: flex; align-items: center; gap: 14px; }
+  #card .what { font: italic 900 62px var(--display); line-height: 1; color: var(--volt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #card .st { font-weight: 800; font-size: 15px; color: var(--muted); white-space: nowrap; }
+  #card.done { border-left-color: var(--white); }
+  #card.done .what { color: var(--white); text-decoration: line-through; text-decoration-color: var(--volt); text-decoration-thickness: 6px; }
+  #card.done .st { color: var(--volt); }
+  #card.new { animation: pop .6s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+  #card.idle .what { color: var(--daytona); }
+
+  /* Namensleiste */
+  .plate { position: absolute; left: 26px; top: 762px; display: flex; height: 50px; }
+  .name { display: flex; align-items: center; font: italic 900 34px var(--display); letter-spacing: 1.5px; color: var(--ink); background: var(--volt);
+    padding: 0 30px 0 18px; clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  .mark { display: flex; align-items: center; gap: 10px; background: #000; margin-left: -10px; padding: 0 24px 0 28px; clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); }
+  .word { font: italic 900 32px var(--display); letter-spacing: 3px; }
+  .word .c { position: relative; display: inline-block; }
+  .word .c::after { content: attr(data-l); position: absolute; left: 0; top: 0; color: var(--volt); clip-path: inset(46% 0 38% 0); }
+  .slogan { font-weight: 800; font-size: 14px; letter-spacing: 2px; color: var(--muted); }
+
+  /* Strafen-Tafel als Zeile unten */
+  #tafel { position: absolute; left: 40px; top: 840px; width: 1240px; height: 190px; border: 0; background: transparent; }
+  body.preview .slot { position: absolute; border: 2px dashed #555; display: grid; place-items: center; color: #666; font: 700 15px Inter; }
+  .slot { display: none; }
+  body.preview .slot { display: grid; }
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div class="frame" id="cam"><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div></div>
+<div class="frame" id="game"><div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div><div class="glabel">LIVE-GAME</div></div>
+<div id="card" class="idle">
+  <div class="k"><b>CHALLENGE</b><span id="nth"></span></div>
+  <div class="why" id="why">Warte auf Strafe …</div>
+  <div class="what" id="what">—</div>
+  <div class="st" id="st">Stream Deck drücken, wenn's passiert</div>
+</div>
+<div class="plate"><div class="name" id="name"></div><div class="mark"><span class="word" id="word"></span><span class="slogan" id="slogan"></span></div></div>
+<iframe id="tafel" allowtransparency="true"></iframe>
+<div class="slot" style="left:1310px;top:690px;width:570px;height:80px">Fitness XP: fitness-xp.html?x=1315&amp;y=690</div>
+<div class="slot" style="left:1310px;top:900px;width:570px;height:120px">Socials-Karte (570 × 120)</div>
+<script>
+(() => {
+  const C = (typeof CONFIG !== "undefined") ? CONFIG : {};
+  const params = new URLSearchParams(location.search);
+  if (!window.obsstudio) document.body.classList.add("preview");
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const cam = C.cam || {};
+  document.getElementById("name").textContent = String(cam.name || "itsdrescher_").toUpperCase();
+  const brand = cam.brand !== undefined ? cam.brand : "UNVYLD";
+  document.getElementById("word").innerHTML = [...brand].map(l => l === "V" ? `<span>${l}</span>` : `<span class="c" data-l="${esc(l)}">${esc(l)}</span>`).join("");
+  document.getElementById("slogan").textContent = cam.slogan !== undefined ? cam.slogan : "NEVER YIELD.";
+  document.getElementById("tafel").src = "strafen-tafel.html?layout=row" + (params.has("demo") ? "&demo" : "");
+
+  const CH = Challenges.config, card = document.getElementById("card");
+  Challenges.onChange((st, why) => {
+    if (!st.current) { card.className = "idle"; return; }
+    const c = CH.list.find(x => x.id === st.current.id); if (!c) return;
+    document.getElementById("why").innerHTML = `<span>${esc(c.icon || "")}</span>${esc(c.label.toUpperCase())}`;
+    document.getElementById("what").textContent = `${c.reps} ${Challenges.exName(c.exercise, c.reps).toUpperCase()}`;
+    const n = st.counts[c.id] || 0;
+    document.getElementById("nth").textContent = `${n}. Mal heute`;
+    document.getElementById("st").textContent = st.done ? "ERLEDIGT ✓  Weiter geht's" : "Los! Danach mit !done oder Stream Deck abhaken";
+    card.className = st.done ? "done" : "";
+    if (why === "challenge") { void card.offsetWidth; card.classList.add("new"); }
+  });
+})();
+</script>
+</body>
+</html>

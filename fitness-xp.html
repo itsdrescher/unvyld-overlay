@@ -304,7 +304,7 @@
     try {
       const res = await client.getActions();
       const list = (res && res.actions) || [];
-      const need = [CONFIG.rules.action, CONFIG.clipAction, CONFIG.speakAction].filter(Boolean);
+      const need = [CONFIG.rules.action, CONFIG.clipAction, CONFIG.speakAction, (CONFIG.challenges || {}).doneAction].filter(Boolean);
       const problems = need.flatMap(n => {
         const a = list.find(x => x.name === n);
         if (!a) return [`„${n}“ fehlt`];
@@ -351,11 +351,12 @@
     if (/^Raid/.test(kind)) return `Raid von ${who}! ${what} für die Raider.`;
     if (/^Kanalpunkte/.test(kind)) return pick([`${who} hat Kanalpunkte eingelöst. ${what}!`, `${who} gönnt mir ${what}. Danke für nichts!`]);
     if (/^Test/.test(kind)) return `Test-Quest: ${what}.`;
+    if (kind === ((CONFIG.challenges || {}).group || "Challenge")) return pick([`${who}! Das kostet ${what}.`, `${who}. Strafe: ${what}. Ab auf den Boden!`]);
     return pick([`Das Glücksrad hat entschieden: ${what}!`, `Neue Quest: ${what}.`]);
   }
 
   /* ---------- Quests ---------- */
-  function addTask(exKey, reps, source, mergeKey, noSound) {
+  function addTask(exKey, reps, source, mergeKey, noSound, challenge) {
     if (!reps || reps <= 0) return;
     const now = Date.now();
     const last = state.queue[state.queue.length - 1];
@@ -363,7 +364,7 @@
       last.reps += reps; last.t = now; last.source = source;
       save(); render(); return;
     }
-    state.queue.push({ id: state.nextId++, ex: exKey, reps, source, mergeKey, t: now });
+    state.queue.push({ id: state.nextId++, ex: exKey, reps, source, mergeKey, t: now, challenge: !!challenge });
     save(); render();
     const e = ex(exKey);
     toast("NEUE QUEST!", `${e.icon} ${reps} ${e.name}`, source);
@@ -379,6 +380,9 @@
     toast("QUEST ABGESCHLOSSEN", `✔ ${t.reps} ${ex(t.ex).name}`, "");
     playSound("done");
     runAction(CONFIG.clipAction, { text: `${t.reps} ${ex(t.ex).name} (${t.source})` });
+    // Letzte Challenge erledigt → zurück zur Spielszene (Streamer.bot-Aktion, optional)
+    const C = CONFIG.challenges || {};
+    if (t.challenge && C.doneAction && !state.queue.some(q => q.challenge)) setTimeout(() => runAction(C.doneAction, {}), (C.backDelaySec ?? 3) * 1000);
     if (CONFIG.speakDone) speak(["Quest erledigt. Stark!", "Geschafft. Never yield!", "Erledigt. Weiter geht's."][Math.floor(Math.random() * 3)]);
   }
 
@@ -587,6 +591,21 @@
     }
   }
 
+  /* ---------- Stream-Deck-Challenges (Streamer.bot: CPH.WebsocketBroadcastJson) ---------- */
+  function onCustom(d) {
+    if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { return; } }
+    d = d && (d.fitness ? d : (d.data && d.data.fitness ? d.data : d));
+    if (!d || !d.fitness) return;
+    const C = CONFIG.challenges || {};
+    if (d.fitness === "challenge") {
+      const c = (C.list || []).find(x => x.id === d.id);
+      if (!c) { console.warn("[Fitness XP] Unbekannte Challenge:", d.id); return; }
+      addTask(c.exercise, c.reps, `${C.group || "Challenge"}: ${c.label}`, null, false, true);
+    }
+    else if (d.fitness === "done") completeFirst();
+    else if (d.fitness === "spin") queueSpin("Stream Deck");
+  }
+
   /* ---------- Events ---------- */
   const nameOf = d => d.user?.display_name || d.user?.displayName || d.user?.name || d.user?.login
     || d.displayName || d.display_name || d.userName || d.user_name || d.user_login || d.userLogin
@@ -707,6 +726,7 @@
     on("Streamlabs.Donation", onDonation);
     on("Kofi.Donation", onDonation);
     on("TipeeeStream.Donation", onDonation);
+    on("General.Custom", onCustom);
   }
 
   /* ---------- Vorschau-Modus (Browser ohne Streamer.bot oder ?demo) ---------- */
