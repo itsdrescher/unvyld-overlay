@@ -52,20 +52,35 @@
 
     const rules = ruleList(C);
     let i = 0, busy = false;
+    // Ablauf fest getaktet (nicht auf Animations-Promises warten): so bleibt das Band nie halb sichtbar hängen,
+    // auch wenn OBS die Quelle zwischendurch pausiert oder die Szene wechselt.
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    function hide() {
+      ribbon.getAnimations().forEach(a => a.cancel()); text.getAnimations().forEach(a => a.cancel());
+      ribbon.style.transform = "translateX(105%)";
+    }
     async function showNext() {
       if (busy) return;
-      busy = true; size();
-      text.innerHTML = rules[i % rules.length]; i++;
-      await ribbon.animate([{ transform: "translateX(105%)" }, { transform: "translateX(0)" }],
-        { duration: 600, easing: "cubic-bezier(.2,.9,.3,1)", fill: "forwards" }).finished;
-      const from = track.clientWidth, to = -text.scrollWidth;
-      await text.animate([{ transform: `translate(${from}px, -50%)` }, { transform: `translate(${to}px, -50%)` }],
-        { duration: B.showSec * 1000, easing: "linear", fill: "forwards" }).finished;
-      await ribbon.animate([{ transform: "translateX(0)" }, { transform: "translateX(-105%)" }],
-        { duration: 500, easing: "cubic-bezier(.6,0,.8,.4)", fill: "forwards" }).finished;
-      ribbon.getAnimations().forEach(a => a.cancel()); text.getAnimations().forEach(a => a.cancel());
-      busy = false;
+      busy = true;
+      try {
+        size(); hide();
+        text.innerHTML = rules[i % rules.length]; i++;
+        ribbon.style.transform = "";
+        ribbon.animate([{ transform: "translateX(105%)" }, { transform: "translateX(0)" }],
+          { duration: 600, easing: "cubic-bezier(.2,.9,.3,1)", fill: "forwards" });
+        await wait(620);
+        const from = track.clientWidth, to = -text.scrollWidth;
+        text.animate([{ transform: `translate(${from}px, -50%)` }, { transform: `translate(${to}px, -50%)` }],
+          { duration: B.showSec * 1000, easing: "linear", fill: "forwards" });
+        await wait(B.showSec * 1000 + 20);
+        ribbon.animate([{ transform: "translateX(0)" }, { transform: "translateX(-105%)" }],
+          { duration: 500, easing: "cubic-bezier(.6,0,.8,.4)", fill: "forwards" });
+        await wait(520);
+      } catch (e) { console.error(e); }
+      finally { hide(); busy = false; }
     }
+    // Wird die Quelle wieder sichtbar, sauber neu anfangen
+    document.addEventListener("visibilitychange", () => { if (!document.hidden && !busy) hide(); });
     setTimeout(showNext, 3000);
     setInterval(showNext, B.everySec * 1000);
     return { showNext };
